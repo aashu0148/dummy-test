@@ -74,13 +74,13 @@ const checkForGoodTrade = async () => {
     .map((item) => parseInt(item));
 
   // returning if not in market hours
-  // if (
-  //   hour < 9 ||
-  //   hour > 16 ||
-  //   (hour == 9 && min < 15) ||
-  //   (hour == 15 && min > 28)
-  // )
-  //   return;
+  if (
+    hour < 9 ||
+    hour > 16 ||
+    (hour == 9 && min < 15) ||
+    (hour == 15 && min > 28)
+  )
+    return;
 
   let latestDataNotPresent = false;
   if (!stockData.date) latestDataNotPresent = true;
@@ -127,7 +127,7 @@ const checkForGoodTrade = async () => {
     trades[s] = t;
   });
 
-  console.log("firing event");
+  console.log("🔵 firing event to frontend");
   io.to("trades").emit("trade-taken", { trades, stockData });
 
   // const today9_15Time = new Date(
@@ -154,7 +154,7 @@ const checkForGoodTrade = async () => {
 };
 
 // interval for taking trades
-setInterval(checkForGoodTrade, 5 * 1000);
+setInterval(checkForGoodTrade, 60 * 1000);
 
 server.listen(5000, () => {
   console.log("Backend is up at port 5000");
