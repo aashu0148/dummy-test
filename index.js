@@ -203,7 +203,7 @@ const checkForGoodTrade = async () => {
 };
 
 // interval for taking trades
-setInterval(checkForGoodTrade, 60 * 1000);
+setInterval(checkForGoodTrade, 10 * 1000);
 
 server.listen(5000, () => {
   console.log("Backend is up at port 5000");

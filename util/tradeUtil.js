@@ -363,6 +363,8 @@ export const takeTrades = async (
     vwapPeriod = 14,
   }
 ) => {
+  if (!priceData.c?.length) return { trades: [], analytics: {} };
+
   const indicatorSmallMA = new technicalIndicatorSMA(smaLowPeriod);
   const indicatorBigMA = new technicalIndicatorSMA(smaHighPeriod);
   const indicatorStochastic = new technicalIndicatorStochastic(
@@ -615,6 +617,7 @@ export const takeTrades = async (
       const strongSupportResistances = ranges.filter(
         (item) => item.stillStrong
       );
+
       const pricesWithTrends = getTrendEstimates(prices, i - 40);
       const trend = pricesWithTrends[i].trend;
       const rsi = RSI[i];
