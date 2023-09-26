@@ -33,7 +33,7 @@ const availableStocks = {
   hdfcLife: "HDFCLIFE",
   reliance: "RELIANCE",
   hclTech: "HCLTECH",
-  sbi: "SBI",
+  sbi: "SBIN",
   kfinTech: "KFINTECH",
   laOplaRG: "LAOPALA",
   latentView: "LATENTVIEW",
