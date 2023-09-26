@@ -48,6 +48,8 @@ const availableStocks = {
   LICHSGFIN: "LICHSGFIN",
   COALINDIA: "COALINDIA",
   BPCL: "BPCL",
+  MAZDOK: "MAZDOK",
+  PARAS: "PARAS",
 };
 const stockData = {
   date: "",
