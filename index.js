@@ -61,6 +61,7 @@ const bestStockPresets = {
   [availableStocks.itc]: {},
 };
 let intradayStockData = {};
+let lastTradesTaken = "";
 
 const getStockPastData = async (symbol, to) => {
   if (!to) return null;
@@ -143,15 +144,15 @@ const checkForGoodTrade = async () => {
   // stockData.date = new Date(todayStartTime + 24 * 60 * 60 * 1000);
   // }
 
-  const allTakenTrades = await Promise.all(
-    stockSymbols.map((s) => takeTrades(stockData.data[s], bestStockPresets[s]))
-  );
-
   console.log(
     "⏱️ sending recent stock data",
     new Date().toLocaleTimeString("en-in")
   );
   io.to("trades").emit("stock-data", stockData);
+
+  const allTakenTrades = await Promise.all(
+    stockSymbols.map((s) => takeTrades(stockData.data[s], bestStockPresets[s]))
+  );
 
   const trades = stockSymbols
     .map((s, i) => {
@@ -162,7 +163,13 @@ const checkForGoodTrade = async () => {
     .filter((item) => item.trades?.length)
     .map((item) => ({ ...item, trade: item.trades[0] }));
 
-  if (!trades.length) return;
+  if (
+    !trades.length ||
+    lastTradesTaken == trades.map((item) => item.symbol).join(",")
+  )
+    return;
+
+  lastTradesTaken = trades.map((item) => item.symbol).join(",");
 
   for (let i = 0; i < trades.length; ++i) {
     const item = trades[i];
