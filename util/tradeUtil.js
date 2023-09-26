@@ -423,7 +423,7 @@ export const takeTrades = async (
 
   // const startTakingTradeIndex = 2000;
   // allowing the algo to take only one trade for last price
-  // const startTakingTradeIndex = priceData.c.length - 2;
+  const startTakingTradeIndex = priceData.c.length - 2;
 
   const vps = getVPoints({
     offset: vPointOffset,
