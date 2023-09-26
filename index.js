@@ -146,7 +146,7 @@ const checkForGoodTrade = async () => {
     const newTrade = new tradeSchema({
       name: item.symbol,
       ...item.trade,
-      time: new Date(),
+      time: Date.now(),
       date: new Date().toLocaleDateString(),
     });
 

@@ -14,9 +14,7 @@ const schema = new mongoose.Schema(
       type: Number,
       required: true,
     },
-    time: {
-      type: Date,
-    },
+    time: Number,
     date: String,
     startPrice: Number,
     type: String,
