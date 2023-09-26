@@ -48,7 +48,7 @@ const availableStocks = {
   LICHSGFIN: "LICHSGFIN",
   COALINDIA: "COALINDIA",
   BPCL: "BPCL",
-  MAZDOK: "MAZDOK",
+  MAZDOCK: "MAZDOCK",
   PARAS: "PARAS",
 };
 const stockData = {
@@ -73,7 +73,6 @@ const bestStockPresets = {
   [availableStocks.tataSteel]: {},
   [availableStocks.itc]: {},
 };
-let intradayStockData = {};
 let lastTradesTaken = "";
 
 const getStockPastData = async (symbol, to) => {
