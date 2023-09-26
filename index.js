@@ -81,9 +81,11 @@ const getStockPastData = async (symbol, to) => {
 
   const url = `https://priceapi.moneycontrol.com/techCharts/indianMarket/stock/history?symbol=${symbol}&resolution=5&to=${time}&countback=4000&currencyCode=INR`;
 
-  const res = await axios.get(url);
+  const res = await axios
+    .get(url)
+    .catch((err) => console.log("🔴 ERROR making req", err.message));
 
-  if (res.data.s !== "ok") return null;
+  if (res?.data?.s !== "ok") return null;
 
   return res.data;
 };
