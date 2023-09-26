@@ -123,6 +123,8 @@ const checkForGoodTrade = async () => {
     stockSymbols.map((s) => takeTrades(stockData.data[s], bestStockPresets[s]))
   );
 
+  io.to("trades").emit("stock-data", stockData);
+
   const trades = stockSymbols
     .map((s, i) => {
       const t = allTakenTrades[i];
