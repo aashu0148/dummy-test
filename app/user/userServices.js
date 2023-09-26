@@ -10,7 +10,7 @@ const loginUser = async (req, res) => {
   if (!password) return createError(res, "Password required");
   if (!validateEmail(email)) return createError(res, "Invalid email", 422);
 
-  const user = await userSchema.findOne({ email });
+  const user = await userSchema.findOne({ email: email.toLowerCase() });
 
   if (!user) return createError(res, `No user found with: ${email}`);
 
@@ -55,7 +55,7 @@ const signupUser = async (req, res) => {
 
   const newUser = new userSchema({
     name,
-    email,
+    email: email.toLowerCase(),
     password: passHash,
     token: tokenHash,
   });
