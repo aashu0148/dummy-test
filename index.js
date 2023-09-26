@@ -32,6 +32,11 @@ const availableStocks = {
   indusIndBank: "INDUSINDBK",
   hdfcLife: "HDFCLIFE",
   reliance: "RELIANCE",
+  hclTech: "HCLTECH",
+  sbi: "SBI",
+  kfinTech: "KFINTECH",
+  laOplaRG: "LAOPALA",
+  latentView: "LATENTVIEW",
 };
 const stockData = {
   date: "",
