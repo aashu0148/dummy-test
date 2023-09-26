@@ -37,6 +37,14 @@ const availableStocks = {
   kfinTech: "KFINTECH",
   laOplaRG: "LAOPALA",
   latentView: "LATENTVIEW",
+  miraeamcMamfgetf: "MAKEINDIA",
+  LAURUSLABS: "LAURUSLABS",
+  AXISNIFTY: "AXISNIFTY",
+  KOTAKBKETF: "KOTAKBKETF",
+  NEXT50: "NEXT50",
+  SHOPERSTOP: "SHOPERSTOP",
+  ICICIM150: "ICICIM150",
+  GMRINFRA: "GMRINFRA",
 };
 const stockData = {
   date: "",
@@ -166,8 +174,14 @@ const checkForGoodTrade = async () => {
   if (
     !trades.length ||
     lastTradesTaken == trades.map((item) => item.symbol).join(",")
-  )
+  ) {
+    if (!trades.length)
+      console.log(
+        "🟡 no trades to take for now!!",
+        allTakenTrades.map((item) => item.trades?.length)
+      );
     return;
+  }
 
   lastTradesTaken = trades.map((item) => item.symbol).join(",");
 
@@ -211,7 +225,7 @@ const checkForGoodTrade = async () => {
 };
 
 // interval for taking trades
-setInterval(checkForGoodTrade, 60 * 1000);
+setInterval(checkForGoodTrade, 90 * 1000);
 
 server.listen(5000, () => {
   console.log("Backend is up at port 5000");
