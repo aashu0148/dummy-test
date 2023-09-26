@@ -147,7 +147,7 @@ const checkForGoodTrade = async () => {
       name: item.symbol,
       ...item.trade,
       time: Date.now(),
-      date: new Date().toLocaleDateString(),
+      date: new Date().toLocaleDateString("en-in"),
     });
 
     await newTrade.save();
