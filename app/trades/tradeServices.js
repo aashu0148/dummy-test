@@ -1,3 +1,4 @@
+import { bestStockPresets } from "../../util/constants.js";
 import { createError, createResponse } from "../../util/util.js";
 import tradeSchema from "./tradeSchema.js";
 
@@ -9,4 +10,8 @@ const getTodayTrades = async (req, res) => {
   createResponse(res, trades);
 };
 
-export { getTodayTrades };
+const getBestStockPresets = async (req, res) => {
+  createResponse(res, bestStockPresets);
+};
+
+export { getTodayTrades, getBestStockPresets };
