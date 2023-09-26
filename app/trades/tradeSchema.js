@@ -17,6 +17,9 @@ const schema = new mongoose.Schema(
     time: {
       type: Date,
     },
+    date: String,
+    startPrice: Number,
+    type: String,
     analytics: Object,
   },
   {

@@ -6,6 +6,8 @@ import http from "http";
 import dotenv from "dotenv";
 dotenv.config();
 
+import tradeSchema from "./app/trades/tradeSchema.js";
+import tradeRoutes from "./app/trades/tradeRoutes.js";
 import SocketEvents from "./app/socket/events.js";
 import userRoutes from "./app/user/userRoutes.js";
 import axios from "axios";
@@ -19,6 +21,7 @@ app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+app.use(tradeRoutes);
 app.use(userRoutes);
 app.get("/hi", (_req, res) => res.send("Hello there buddy!"));
 
@@ -120,15 +123,34 @@ const checkForGoodTrade = async () => {
     stockSymbols.map((s) => takeTrades(stockData.data[s], bestStockPresets[s]))
   );
 
-  const trades = {};
-  stockSymbols.forEach((s, i) => {
-    const t = allTakenTrades[i];
+  const trades = stockSymbols
+    .map((s, i) => {
+      const t = allTakenTrades[i];
 
-    trades[s] = t;
-  });
+      return { symbol: s, trades: t };
+    })
+    .filter((item) => item.trades?.length)
+    .map((item) => ({ ...item, trade: trades[0] }));
+
+  if (!trades.length) {
+    return;
+  }
+
+  for (let i = 0; i < trades.length; ++i) {
+    const item = trades[i];
+
+    const newTrade = new tradeSchema({
+      name: item.symbol,
+      ...item.trade,
+      time: new Date(),
+      date: new Date().toLocaleDateString(),
+    });
+
+    await newTrade.save();
+  }
 
   console.log("🔵 firing event to frontend");
-  io.to("trades").emit("trade-taken", { trades, stockData });
+  io.to("trades").emit("trade-taken");
 
   // const today9_15Time = new Date(
   //   todayStartTime + 9 * 60 * 60 * 1000 + 15 * 60 * 1000
