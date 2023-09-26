@@ -28,14 +28,32 @@ app.get("/hi", (_req, res) => res.send("Hello there buddy!"));
 const availableStocks = {
   tataMotors: "TATAMOTORS",
   tataSteel: "TATASTEEL",
+  itc: "ITC",
+  indusIndBank: "INDUSINDBK",
+  hdfcLife: "HDFCLIFE",
+  reliance: "RELIANCE",
 };
 const stockData = {
   date: "",
   data: {},
 };
 const bestStockPresets = {
-  [availableStocks.tataMotors]: {},
+  ...Object.values(availableStocks).reduce((acc, curr) => {
+    acc[curr] = {};
+    return acc;
+  }, {}),
+  [availableStocks.tataMotors]: {
+    cciPeriod: 20,
+    vPointOffset: 9,
+    stochasticPeriod: 14,
+    stochasticMA: 3,
+    stochasticHigh: 83,
+    stochasticLow: 23,
+    bollingerBandPeriod: 23,
+    bollingerBandStdDev: 4,
+  },
   [availableStocks.tataSteel]: {},
+  [availableStocks.itc]: {},
 };
 let intradayStockData = {};
 
