@@ -559,7 +559,7 @@ export const takeTrades = async (
           offset: vPointOffset,
           prices: prices,
           startFrom: i - 40,
-          previousOutput: indicators.vPs.filter((item) => item.index < i - 40),
+          previousOutput: indicators.vPs.filter((item) => item?.index < i - 40),
         });
         const obv = await IXJIndicators.obv(prices, vols);
         const willR = await IXJIndicators.willr(
@@ -615,11 +615,11 @@ export const takeTrades = async (
         prices
       );
       const strongSupportResistances = ranges.filter(
-        (item) => item.stillStrong
+        (item) => item?.stillStrong
       );
 
       const pricesWithTrends = getTrendEstimates(prices, i - 40);
-      const trend = pricesWithTrends[i].trend;
+      const trend = pricesWithTrends[i]?.trend;
       const rsi = RSI[i];
       const cci = CCI[i];
       const mfi = indicators.mfi[i];
@@ -685,9 +685,9 @@ export const takeTrades = async (
           ? signalEnum.buy
           : signalEnum.hold;
       const bollingerBandSignal =
-        price >= BB[i].upper
+        price >= BB[i]?.upper
           ? signalEnum.sell
-          : price <= BB[i].lower
+          : price <= BB[i]?.lower
           ? signalEnum.buy
           : signalEnum.hold;
       const psarSignal =
@@ -800,7 +800,8 @@ export const takeTrades = async (
           ? nearestResistance - price
           : targetProfit;
 
-        if (possibleProfit < targetProfit) continue;
+        // commented out for testing purpose
+        // if (possibleProfit < targetProfit) continue;
 
         isTradeTaken = true;
         trade = {
@@ -843,7 +844,8 @@ export const takeTrades = async (
           ? price - nearestSupport
           : targetProfit;
 
-        if (possibleProfit < targetProfit) continue;
+        // commented out for testing purpose
+        // if (possibleProfit < targetProfit) continue;
 
         isTradeTaken = true;
         trade = {
