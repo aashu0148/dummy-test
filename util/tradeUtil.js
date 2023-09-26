@@ -421,9 +421,9 @@ export const takeTrades = async (
     noOfBreakdowns: 0,
   };
 
-  // const startTakingTradeIndex = 200;
+  // const startTakingTradeIndex = 2000;
   // allowing the algo to take only one trade for last price
-  const startTakingTradeIndex = priceData.c.length - 2;
+  // const startTakingTradeIndex = priceData.c.length - 2;
 
   const vps = getVPoints({
     offset: vPointOffset,

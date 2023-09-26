@@ -123,20 +123,22 @@ const checkForGoodTrade = async () => {
     stockSymbols.map((s) => takeTrades(stockData.data[s], bestStockPresets[s]))
   );
 
+  console.log(
+    "⏱️ sending recent stock data",
+    new Date().toLocaleTimeString("en-in")
+  );
   io.to("trades").emit("stock-data", stockData);
 
   const trades = stockSymbols
     .map((s, i) => {
-      const t = allTakenTrades[i];
+      const t = allTakenTrades[i].trades;
 
       return { symbol: s, trades: t };
     })
     .filter((item) => item.trades?.length)
-    .map((item) => ({ ...item, trade: trades[0] }));
+    .map((item) => ({ ...item, trade: item.trades[0] }));
 
-  if (!trades.length) {
-    return;
-  }
+  if (!trades.length) return;
 
   for (let i = 0; i < trades.length; ++i) {
     const item = trades[i];
