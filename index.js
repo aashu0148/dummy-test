@@ -80,6 +80,9 @@ const checkForGoodTrade = async () => {
   )
     return;
 
+  // returning if not near the 5min time frame
+  if (min % 5 > 0 && min % 5 < 4) return;
+
   let latestDataNotPresent = false;
   if (!stockData.date) latestDataNotPresent = true;
   else if (new Date(stockData.date) < new Date()) latestDataNotPresent = true;
@@ -115,10 +118,7 @@ const checkForGoodTrade = async () => {
   // stockData.date = new Date(todayStartTime + 24 * 60 * 60 * 1000);
   // }
 
-  console.log(
-    "⏱️ sending recent stock data",
-    new Date().toLocaleTimeString("en-in")
-  );
+  console.log("⏱️ sending recent stock data", currentTimeString);
   io.to("trades").emit("stock-data", stockData);
 
   const allTakenTrades = await Promise.all(
@@ -188,7 +188,7 @@ const checkForGoodTrade = async () => {
 };
 
 // interval for taking trades
-setInterval(checkForGoodTrade, 90 * 1000);
+setInterval(checkForGoodTrade, 30 * 1000);
 
 server.listen(5000, () => {
   console.log("Backend is up at port 5000");
