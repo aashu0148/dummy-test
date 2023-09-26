@@ -1,4 +1,4 @@
-const SocketEvents = (io) => {
+const SocketEvents = (io, stockData) => {
   const sendSocketError = (socket, message) => {
     socket.emit("error", message);
   };
@@ -10,6 +10,7 @@ const SocketEvents = (io) => {
       socket.join("trades");
 
       socket.emit("joined");
+      socket.emit("stock-data", stockData);
     });
 
     socket.on("leave", (socket) => {

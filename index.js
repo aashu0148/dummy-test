@@ -120,27 +120,28 @@ const checkForGoodTrade = async () => {
   ).getTime();
   const stockSymbols = Object.values(availableStocks);
 
-  if (latestDataNotPresent) {
-    const responses = await Promise.all(
-      stockSymbols.map((item) => getStockPastData(item, Date.now()))
-    );
+  // if (latestDataNotPresent) {
+  const responses = await Promise.all(
+    stockSymbols.map((item) => getStockPastData(item, Date.now()))
+  );
 
-    const data = {};
-    stockSymbols.forEach((item, i) => {
-      data[item] = responses[i] || {
-        s: "no",
-        c: [],
-        t: [],
-        v: [],
-        l: [],
-        o: [],
-        h: [],
-      };
-    });
+  const data = {};
+  stockSymbols.forEach((item, i) => {
+    data[item] = responses[i] || {
+      s: "no",
+      c: [],
+      t: [],
+      v: [],
+      l: [],
+      o: [],
+      h: [],
+    };
+  });
 
-    stockData.data = data;
-    stockData.date = new Date(todayStartTime + 24 * 60 * 60 * 1000);
-  }
+  stockData.data = data;
+  stockData.date = Date.now();
+  // stockData.date = new Date(todayStartTime + 24 * 60 * 60 * 1000);
+  // }
 
   const allTakenTrades = await Promise.all(
     stockSymbols.map((s) => takeTrades(stockData.data[s], bestStockPresets[s]))
@@ -208,7 +209,7 @@ setInterval(checkForGoodTrade, 60 * 1000);
 server.listen(5000, () => {
   console.log("Backend is up at port 5000");
 
-  SocketEvents(io);
+  SocketEvents(io, stockData);
   mongoose.set("strictQuery", true);
   mongoose
     .connect(process.env.MONGO_URI)
