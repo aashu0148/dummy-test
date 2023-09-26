@@ -3,6 +3,7 @@ import cors from "cors";
 import mongoose from "mongoose";
 import { Server as socketServer } from "socket.io";
 import http from "http";
+import axios from "axios";
 import dotenv from "dotenv";
 dotenv.config();
 
@@ -10,8 +11,8 @@ import tradeSchema from "./app/trades/tradeSchema.js";
 import tradeRoutes from "./app/trades/tradeRoutes.js";
 import SocketEvents from "./app/socket/events.js";
 import userRoutes from "./app/user/userRoutes.js";
-import axios from "axios";
 import { takeTrades } from "./util/tradeUtil.js";
+import { availableStocks, bestStockPresets } from "./util/constants.js";
 
 const app = express();
 const server = http.createServer(app);
@@ -25,53 +26,9 @@ app.use(tradeRoutes);
 app.use(userRoutes);
 app.get("/hi", (_req, res) => res.send("Hello there buddy!"));
 
-const availableStocks = {
-  tataMotors: "TATAMOTORS",
-  tataSteel: "TATASTEEL",
-  itc: "ITC",
-  indusIndBank: "INDUSINDBK",
-  hdfcLife: "HDFCLIFE",
-  reliance: "RELIANCE",
-  hclTech: "HCLTECH",
-  sbi: "SBIN",
-  kfinTech: "KFINTECH",
-  laOplaRG: "LAOPALA",
-  latentView: "LATENTVIEW",
-  miraeamcMamfgetf: "MAKEINDIA",
-  LAURUSLABS: "LAURUSLABS",
-  KOTAKBKETF: "KOTAKBKETF",
-  SHOPERSTOP: "SHOPERSTOP",
-  ICICIM150: "ICICIM150",
-  TATACONSUM: "TATACONSUM",
-  SHYAMMETL: "SHYAMMETL",
-  TVSMOTOR: "TVSMOTOR",
-  LICHSGFIN: "LICHSGFIN",
-  COALINDIA: "COALINDIA",
-  BPCL: "BPCL",
-  MAZDOCK: "MAZDOCK",
-  PARAS: "PARAS",
-};
 const stockData = {
   date: "",
   data: {},
-};
-const bestStockPresets = {
-  ...Object.values(availableStocks).reduce((acc, curr) => {
-    acc[curr] = {};
-    return acc;
-  }, {}),
-  [availableStocks.tataMotors]: {
-    cciPeriod: 20,
-    vPointOffset: 9,
-    stochasticPeriod: 14,
-    stochasticMA: 3,
-    stochasticHigh: 83,
-    stochasticLow: 23,
-    bollingerBandPeriod: 23,
-    bollingerBandStdDev: 4,
-  },
-  [availableStocks.tataSteel]: {},
-  [availableStocks.itc]: {},
 };
 let lastTradesTaken = "";
 

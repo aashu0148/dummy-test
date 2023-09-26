@@ -1,0 +1,75 @@
+export const availableStocks = {
+  tataMotors: "TATAMOTORS",
+  tataSteel: "TATASTEEL",
+  itc: "ITC",
+  indusIndBank: "INDUSINDBK",
+  hdfcLife: "HDFCLIFE",
+  reliance: "RELIANCE",
+  hclTech: "HCLTECH",
+  sbi: "SBIN",
+  kfinTech: "KFINTECH",
+  laOplaRG: "LAOPALA",
+  latentView: "LATENTVIEW",
+  miraeamcMamfgetf: "MAKEINDIA",
+  LAURUSLABS: "LAURUSLABS",
+  KOTAKBKETF: "KOTAKBKETF",
+  SHOPERSTOP: "SHOPERSTOP",
+  ICICIM150: "ICICIM150",
+  TATACONSUM: "TATACONSUM",
+  SHYAMMETL: "SHYAMMETL",
+  TVSMOTOR: "TVSMOTOR",
+  LICHSGFIN: "LICHSGFIN",
+  COALINDIA: "COALINDIA",
+  BPCL: "BPCL",
+  MAZDOCK: "MAZDOCK",
+  PARAS: "PARAS",
+};
+
+export const bestStockPresets = {
+  ...Object.values(availableStocks).reduce((acc, curr) => {
+    acc[curr] = {};
+    return acc;
+  }, {}),
+  [availableStocks.tataMotors]: {
+    decisionMakingPoints: 3,
+    additionalIndicators: {
+      willR: false,
+      mfi: false,
+      trend: true,
+      cci: false,
+      stochastic: false,
+      vwap: false,
+      psar: false,
+    },
+    useSupportResistances: true,
+    vPointOffset: 8,
+  },
+  [availableStocks.tataSteel]: {
+    decisionMakingPoints: 3,
+    additionalIndicators: {
+      willR: false,
+      mfi: false,
+      trend: true,
+      cci: false,
+      stochastic: false,
+      vwap: false,
+      psar: false,
+    },
+    useSupportResistances: true,
+    vPointOffset: 8,
+  },
+  [availableStocks.hdfcLife]: {
+    decisionMakingPoints: 3,
+    additionalIndicators: {
+      willR: false,
+      mfi: false,
+      trend: true,
+      cci: false,
+      stochastic: false,
+      vwap: false,
+      psar: false,
+    },
+    useSupportResistances: true,
+    vPointOffset: 8,
+  },
+};

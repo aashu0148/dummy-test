@@ -37,6 +37,23 @@ const getDxForPrice = (price, time = timeFrame) => {
 
   return dxPercentForTimeFrames[time] * price;
 };
+export const indicatorsWeightEnum = {
+  bollingerBand: 3,
+  movingAvg: 2,
+  sr: 2,
+  macd: 2,
+  rsi: 1,
+  cci: 1,
+  trend: 1,
+  stochastic: 1,
+  psar: 1,
+  superTrend: 1,
+  obv: 1,
+  vwap: 1,
+  williamR: 1,
+  mfi: 1,
+  vPs: 1,
+};
 
 const timesPricesCrossedRange = (prices = [], rangeMin, rangeMax) => {
   let count = 0,
@@ -326,15 +343,17 @@ export const takeTrades = async (
   },
   {
     additionalIndicators = {
-      willR: true,
-      mfi: true,
+      willR: false,
+      mfi: false,
       trend: true,
-      cci: true,
-      stochastic: true,
-      vwap: true,
-      psar: true,
+      cci: false,
+      stochastic: false,
+      vwap: false,
+      psar: false,
     },
-    vPointOffset = 10,
+    decisionMakingPoints = 3,
+    useSupportResistances = true,
+    vPointOffset = 8,
     rsiLow = 48,
     rsiHigh = 63,
     smaLowPeriod = 18,
@@ -698,51 +717,53 @@ export const takeTrades = async (
           : signalEnum.hold;
 
       const initialSignal =
-        signalWeight[srSignal] * 2 +
-        signalWeight[rsiSignal] +
-        signalWeight[bollingerBandSignal] * 3 +
-        signalWeight[macdSignal] * 2 +
-        signalWeight[smaSignal] * 2;
-
-      const decisionMakingPoint = 3;
-
-      let isBuySignal = initialSignal >= decisionMakingPoint;
-      let isSellSignal = initialSignal <= -1 * decisionMakingPoint;
+        signalWeight[srSignal] * indicatorsWeightEnum.sr +
+        signalWeight[rsiSignal] * indicatorsWeightEnum.rsi +
+        signalWeight[bollingerBandSignal] * indicatorsWeightEnum.bollingerBand +
+        signalWeight[macdSignal] * indicatorsWeightEnum.macd +
+        signalWeight[smaSignal] * indicatorsWeightEnum.movingAvg;
 
       const furtherIndicatorSignals = [];
       if (additionalIndicators.cci)
-        furtherIndicatorSignals.push(signalWeight[cciSignal]);
+        furtherIndicatorSignals.push(
+          signalWeight[cciSignal] * indicatorsWeightEnum.cci
+        );
       if (additionalIndicators.mfi)
-        furtherIndicatorSignals.push(signalWeight[mfiSignal]);
+        furtherIndicatorSignals.push(
+          signalWeight[mfiSignal] * indicatorsWeightEnum.mfi
+        );
       if (additionalIndicators.stochastic)
-        furtherIndicatorSignals.push(signalWeight[stochasticSignal]);
+        furtherIndicatorSignals.push(
+          signalWeight[stochasticSignal] * indicatorsWeightEnum.stochastic
+        );
       if (additionalIndicators.vwap)
-        furtherIndicatorSignals.push(signalWeight[vwapSignal]);
+        furtherIndicatorSignals.push(
+          signalWeight[vwapSignal] * indicatorsWeightEnum.vwap
+        );
       if (additionalIndicators.psar)
-        furtherIndicatorSignals.push(signalWeight[psarSignal]);
+        furtherIndicatorSignals.push(
+          signalWeight[psarSignal] * indicatorsWeightEnum.psar
+        );
       if (additionalIndicators.trend)
-        furtherIndicatorSignals.push(signalWeight[trendSignal]);
+        furtherIndicatorSignals.push(
+          signalWeight[trendSignal] * indicatorsWeightEnum.trend
+        );
       if (additionalIndicators.willR)
-        furtherIndicatorSignals.push(signalWeight[willRSignal]);
+        furtherIndicatorSignals.push(
+          signalWeight[willRSignal] * indicatorsWeightEnum.williamR
+        );
 
-      const furtherPossibility =
-        (furtherIndicatorSignals.reduce((acc, curr) => curr + acc, 0) /
-          furtherIndicatorSignals.length) *
-        100;
+      const additionalIndicatorsWeight =
+        furtherIndicatorSignals.reduce((acc, curr) => curr + acc, 0) || 0;
 
-      const estimatedAccuracy = `${(
-        50 +
-        ((isSellSignal ? -1 : 1) * furtherPossibility) / 2
-      ).toFixed(1)}%`;
+      const decisionMakingPoint = decisionMakingPoints || 3;
 
-      // if (parseInt(estimatedAccuracy) < 70) {
-      //   isBuySignal = false;
-      //   isSellSignal = false;
-      // }
+      let isBuySignal =
+        initialSignal + additionalIndicatorsWeight >= decisionMakingPoint;
+      let isSellSignal =
+        initialSignal + additionalIndicatorsWeight <= -1 * decisionMakingPoint;
 
       const analytic = {
-        estimatedAccuracy,
-        vols: vols.slice(i - 4, i + 1),
         additionalIndicators,
         mainSignals: {
           rsiSignal,
@@ -800,18 +821,14 @@ export const takeTrades = async (
           ? nearestResistance - price
           : targetProfit;
 
-        // commented out for testing purpose
-        // if (possibleProfit < targetProfit) continue;
+        if (possibleProfit < targetProfit && useSupportResistances) continue;
 
         isTradeTaken = true;
         trade = {
           startIndex: i,
           startPrice: price,
           type: signalEnum.buy,
-          target:
-            possibleProfit > targetProfit
-              ? price + targetProfit
-              : price + possibleProfit,
+          target: price + targetProfit,
           sl: price - stopLoss,
           analytics: analytic,
           nearestResistance,
@@ -844,18 +861,14 @@ export const takeTrades = async (
           ? price - nearestSupport
           : targetProfit;
 
-        // commented out for testing purpose
-        // if (possibleProfit < targetProfit) continue;
+        if (possibleProfit < targetProfit && useSupportResistances) continue;
 
         isTradeTaken = true;
         trade = {
           startIndex: i,
           startPrice: price,
           type: signalEnum.sell,
-          target:
-            possibleProfit > targetProfit
-              ? price - targetProfit
-              : price - possibleProfit,
+          target: price - targetProfit,
           sl: price + stopLoss,
           analytics: analytic,
           nearestSupport,
