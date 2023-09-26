@@ -39,12 +39,9 @@ const availableStocks = {
   latentView: "LATENTVIEW",
   miraeamcMamfgetf: "MAKEINDIA",
   LAURUSLABS: "LAURUSLABS",
-  AXISNIFTY: "AXISNIFTY",
   KOTAKBKETF: "KOTAKBKETF",
-  NEXT50: "NEXT50",
   SHOPERSTOP: "SHOPERSTOP",
   ICICIM150: "ICICIM150",
-  GMRINFRA: "GMRINFRA",
 };
 const stockData = {
   date: "",
