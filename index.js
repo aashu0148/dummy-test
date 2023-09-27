@@ -211,23 +211,30 @@ const checkForGoodTrade = async () => {
     stockSymbols.map((s) => takeTrades(stockData.data[s], bestStockPresets[s]))
   );
 
-  const trades = stockSymbols
-    .map((s, i) => {
-      const t = allTakenTrades[i].trades;
+  const allTrades = stockSymbols.map((s, i) => {
+    const t = allTakenTrades[i].trades;
+    const a = allTakenTrades[i].analytics;
 
-      return { symbol: s, trades: t };
-    })
-    .filter((item) => item.trades?.length)
-    .map((item) => ({ ...item, trade: item.trades[0] }));
+    return {
+      symbol: s,
+      trades: t,
+      trade: t.length ? t[0] : {},
+      analytic: a[0] && typeof a[0] == "object" ? { ...a[0], symbol: s } : {},
+    };
+  });
+
+  const trades = allTrades.filter((item) => item.trades?.length);
 
   if (
     !trades.length ||
     lastTradesTaken == trades.map((item) => item.symbol).join(",")
   ) {
+    io.to("trades").emit("test", allTrades);
+
     if (!trades.length)
       console.log(
         "🟡 no trades to take for now!!",
-        allTakenTrades.map((item) => item.trades?.length)
+        allTrades.map((item) => item.trades?.length)
       );
     return;
   }

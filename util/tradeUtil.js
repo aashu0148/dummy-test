@@ -382,7 +382,7 @@ export const takeTrades = async (
     vwapPeriod = 14,
   }
 ) => {
-  if (!priceData.c?.length) return { trades: [], analytics: {} };
+  if (!priceData.c?.length) return { trades: [], analytics: [] };
 
   const indicatorSmallMA = new technicalIndicatorSMA(smaLowPeriod);
   const indicatorBigMA = new technicalIndicatorSMA(smaHighPeriod);
@@ -436,11 +436,7 @@ export const takeTrades = async (
     trade = {},
     trades = [];
 
-  let analytics = {
-    signals: [],
-    noOfBreakouts: 0,
-    noOfBreakdowns: 0,
-  };
+  let analytics = [];
 
   // const startTakingTradeIndex = 2000;
   // allowing the algo to take only one trade for last price
@@ -789,7 +785,7 @@ export const takeTrades = async (
         index: i,
         price,
       };
-      analytics.signals.push({
+      analytics.push({
         ...analytic,
       });
 
