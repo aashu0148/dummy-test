@@ -162,7 +162,12 @@ const checkForGoodTrade = async () => {
     return;
 
   // returning if not near the 5min time frame
-  if (min % 5 > 0 && min % 5 < 4) return;
+  if (
+    (min % 5 > 0 && min % 5 < 4) ||
+    (min % 5 == 4 && sec < 30) ||
+    (min % 5 == 0 && sec > 30)
+  )
+    return;
 
   let latestDataNotPresent = false;
   if (!stockData.date) latestDataNotPresent = true;
@@ -249,7 +254,7 @@ const checkForGoodTrade = async () => {
 };
 
 // interval for taking trades
-setInterval(checkForGoodTrade, 30 * 1000);
+setInterval(checkForGoodTrade, 20 * 1000);
 
 server.listen(5000, () => {
   console.log("Backend is up at port 5000");
