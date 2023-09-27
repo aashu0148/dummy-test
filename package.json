@@ -22,6 +22,7 @@
     "google-auth-library": "^8.9.0",
     "mongoose": "^7.3.2",
     "music-metadata": "^8.1.4",
+    "nodemailer": "^6.9.5",
     "socket.io": "^4.7.1"
   },
   "type": "module",

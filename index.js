@@ -3,6 +3,7 @@ import cors from "cors";
 import mongoose from "mongoose";
 import { Server as socketServer } from "socket.io";
 import http from "http";
+import nodemailer from "nodemailer";
 import axios from "axios";
 import dotenv from "dotenv";
 dotenv.config();
@@ -13,6 +14,17 @@ import SocketEvents from "./app/socket/events.js";
 import userRoutes from "./app/user/userRoutes.js";
 import { takeTrades } from "./util/tradeUtil.js";
 import { availableStocks, bestStockPresets } from "./util/constants.js";
+
+const emailsToNotify = ["aashu.1st@gmail.com", "hariomparasher@gmail.com"];
+const gmailMail = process.env.GMAIL_MAIL;
+const gmailPassword = process.env.GMAIL_PASS;
+const transport = nodemailer.createTransport({
+  service: "gmail",
+  auth: {
+    user: gmailMail,
+    pass: gmailPassword,
+  },
+});
 
 const app = express();
 const server = http.createServer(app);
@@ -47,19 +59,88 @@ const getStockPastData = async (symbol, to) => {
   return res.data;
 };
 
-const getCurrentStockData = async (symbol, from) => {
-  if (!from) return null;
-  const timeFrom = parseInt(new Date(from).getTime() / 1000);
-  const timeTo = parseInt(new Date().getTime() / 1000);
+const getMailBodyHTML = ({ symbol, trigger, target, sl, type, time }) => {
+  return `
+  <div
+  style="
+    font-family: sans-serif;
+    background-color: #fff;
+    border-radius: 10px;
+    padding: 20px;
+    margin: 20px auto;
+    max-width: 400px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  "
+>
+  <h3 style="color: #1c65db">Stock Trading Information | ${time}</h3>
+  <div style="margin-top: 10px">
+    <p style="font-weight: 500; color: #73646f; font-size: 14px">Symbol:</p>
+    <p style="color: #000; font-weight:600; font-size: 16px; margin-top:-8px;">${symbol} - ${type}</p>
+  </div>
+  <div style="margin-top: 10px">
+    <p style="font-weight: 500; color: #73646f; font-size: 14px">
+      Trigger Price:
+    </p>
+    <p style="color: #000; font-weight:600; font-size: 16px; margin-top:-8px;">${trigger}</p>
+  </div>
+  <div style="margin-top: 10px">
+    <p style="font-weight: 500; color: #73646f; font-size: 14px">Target Price:</p>
+    <p style="color: #21ac56; font-weight:600; font-size: 16px; margin-top:-8px;">${target}</p>
+  </div>
+  <div style="margin-top: 10px">
+    <p style="font-weight: 500; color: #73646f; font-size: 14px">Stop Loss:</p>
+    <p style="color: #dc3545; font-weight:600; font-size: 16px; margin-top:-8px;">${sl}</p>
+  </div>
+</div>
 
-  const url = `https://priceapi.moneycontrol.com/techCharts/intra?symbol=${symbol}&resolution=5&from=${timeFrom}&to=${timeTo}&currencyCode=INR`;
+  `;
+};
 
-  const res = await axios.get(url);
+const sendMail = async (to, subject, html) => {
+  transport.sendMail({
+    from: gmailMail,
+    to: to,
+    subject,
+    html,
+  });
+};
 
-  console.log(url, res.data);
-  if (res.data.s !== "ok") return null;
+const dummyTrade = {
+  name: "TATASTEEL",
+  symbol: "TATASTEEL",
+  type: "buy",
+  startPrice: 312,
+  target: 318,
+  sl: 309,
+};
 
-  return res.data;
+const notifyEmailsWithTrade = (trade) => {
+  if (!trade?.symbol) return;
+
+  const currentTimeString = new Date().toLocaleTimeString("en-in", {
+    timeZone: "Asia/Kolkata",
+    hour: "numeric",
+    minute: "numeric",
+  });
+
+  emailsToNotify.forEach((email) => {
+    sendMail(
+      email,
+      `${trade.symbol} | ${trade?.type ? trade.type.toUpperCase() : ""}: ${
+        trade.startPrice
+      } | Target: ${trade.target} | SL: ${trade.sl}`,
+      getMailBodyHTML({
+        symbol: trade.symbol,
+        trigger: trade.startPrice,
+        target: trade.target,
+        sl: trade.sl,
+        type: trade.type ? trade.type.toUpperCase() : "",
+        time: currentTimeString,
+      })
+    );
+  });
+
+  console.log("🟢 Mails sent to:", emailsToNotify.join(", "));
 };
 
 const checkForGoodTrade = async () => {
@@ -158,33 +239,13 @@ const checkForGoodTrade = async () => {
       date: new Date().toLocaleDateString("en-in"),
     });
 
+    notifyEmailsWithTrade({ ...item.trade, symbol: item.symbol });
+
     await newTrade.save();
   }
 
-  console.log("🔵 firing event to frontend");
+  console.log("🟢 firing event to frontend");
   io.to("trades").emit("trade-taken");
-
-  // const today9_15Time = new Date(
-  //   todayStartTime + 9 * 60 * 60 * 1000 + 15 * 60 * 1000
-  // ).getTime();
-
-  // const responses = await Promise.all(
-  //   stockSymbols.map((item) => getCurrentStockData(item, today9_15Time))
-  // );
-
-  // const data = {};
-  // stockSymbols.forEach((item, i) => {
-  //   data[item] = responses[i] || {
-  //     s: "no",
-  //     c: [],
-  //     t: [],
-  //     v: [],
-  //     l: [],
-  //     o: [],
-  //     h: [],
-  //   };
-  // });
-  // intradayStockData = data;
 };
 
 // interval for taking trades
