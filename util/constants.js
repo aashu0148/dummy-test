@@ -94,15 +94,6 @@ export const bestStockPresets = {
     vPointOffset: 7,
   },
   [availableStocks.INDIANB]: {
-    additionalIndicators: {
-      willR: false,
-      mfi: false,
-      trend: false,
-      cci: false,
-      stochastic: false,
-      vwap: false,
-      psar: false,
-    },
     vPointOffset: 7,
   },
   [availableStocks.POONAWALLA]: {
@@ -110,5 +101,68 @@ export const bestStockPresets = {
   },
   [availableStocks.SUNTV]: {
     vPointOffset: 14,
+  },
+  [availableStocks.INDHOTEL]: {
+    vPointOffset: 12,
+  },
+  [availableStocks.VEDL]: {
+    vPointOffset: 10,
+    additionalIndicators: {
+      willR: false,
+      mfi: false,
+      trend: true,
+      cci: false,
+      stochastic: true,
+      vwap: false,
+      psar: false,
+    },
+  },
+  [availableStocks.DLF]: {
+    vPointOffset: 8,
+    additionalIndicators: {
+      willR: false,
+      mfi: false,
+      trend: false,
+      cci: false,
+      stochastic: true,
+      vwap: false,
+      psar: false,
+    },
+  },
+  [availableStocks.ZEEL]: {
+    vPointOffset: 6,
+    additionalIndicators: {
+      willR: false,
+      mfi: false,
+      trend: true,
+      cci: false,
+      stochastic: false,
+      vwap: false,
+      psar: false,
+    },
+  },
+  [availableStocks.VBL]: {
+    vPointOffset: 6,
+    additionalIndicators: {
+      willR: false,
+      mfi: false,
+      trend: true,
+      cci: false,
+      stochastic: false,
+      vwap: false,
+      psar: false,
+    },
+  },
+  [availableStocks.CANBK]: {
+    vPointOffset: 10,
+    additionalIndicators: {
+      willR: false,
+      mfi: false,
+      trend: false,
+      cci: false,
+      stochastic: true,
+      vwap: false,
+      psar: false,
+    },
   },
 };
