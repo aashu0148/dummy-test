@@ -785,9 +785,11 @@ export const takeTrades = async (
         index: i,
         price,
       };
-      analytics.push({
-        ...analytic,
-      });
+
+      if (!isBuySignal && !isSellSignal)
+        analytics.push({
+          ...analytic,
+        });
 
       if (isBuySignal) {
         // neglect trade if last trade is recent and type of BUY
@@ -817,10 +819,18 @@ export const takeTrades = async (
           ? nearestResistance - price
           : targetProfit;
 
+        // updating analytic
+        analytic.nearestResistance = nearestResistance;
+        analytic.possibleProfit = possibleProfit;
+        analytics.push({
+          ...analytic,
+        });
+
         if (possibleProfit < targetProfit && useSupportResistances) continue;
 
         isTradeTaken = true;
         trade = {
+          time: priceData.t[i],
           startIndex: i,
           startPrice: price,
           type: signalEnum.buy,
@@ -857,10 +867,18 @@ export const takeTrades = async (
           ? price - nearestSupport
           : targetProfit;
 
+        // updating analytic
+        analytic.nearestSupport = nearestSupport;
+        analytic.possibleProfit = possibleProfit;
+        analytics.push({
+          ...analytic,
+        });
+
         if (possibleProfit < targetProfit && useSupportResistances) continue;
 
         isTradeTaken = true;
         trade = {
+          time: priceData.t[i],
           startIndex: i,
           startPrice: price,
           type: signalEnum.sell,
