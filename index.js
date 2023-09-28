@@ -44,6 +44,78 @@ const stockData = {
 };
 let lastTradesTaken = "";
 
+const checkTradeCompletion = (
+  triggerPrice,
+  prices,
+  target,
+  sl,
+  isSellTrade = false
+) => {
+  if (
+    !triggerPrice ||
+    !target ||
+    !sl ||
+    !Array.isArray(prices) ||
+    !prices?.length
+  )
+    return 0;
+
+  for (let i = 0; i < prices.length; ++i) {
+    const price = prices[i];
+
+    if ((isSellTrade && price <= target) || (!isSellTrade && price >= target))
+      return 1;
+    if ((isSellTrade && price >= sl) || (!isSellTrade && price <= sl))
+      return -1;
+  }
+
+  return 0;
+};
+
+const completeTodaysTradesStatus = async () => {
+  const date = new Date().toLocaleDateString("en-in");
+  const trades = await tradeSchema.find({ date });
+
+  if (!trades.length) return;
+
+  trades.forEach(async (trade) => {
+    if (trade.status == "profit" || trade.status == "loss") return;
+
+    const isSellTrade = trade.type.toLowerCase() == "sell";
+    const symbol = trade.symbol || trade.name;
+
+    const data = stockData.data[symbol];
+    if (!data?.c?.length) return;
+
+    const tradeTimeInSec = trade.time / 1000;
+    const timeIndex = data.t.findIndex((t) => t >= tradeTimeInSec);
+    if (timeIndex < 0) return;
+
+    const statusNumber = checkTradeCompletion(
+      trade.startPrice,
+      data.c.slice(timeIndex),
+      trade.target,
+      trade.sl,
+      isSellTrade
+    );
+
+    const status =
+      statusNumber == 1 ? "profit" : statusNumber == -1 ? "loss" : "taken";
+    if (status == trade.status) return;
+
+    // update the trade status
+    await tradeSchema.updateOne(
+      { _id: trade._id },
+      {
+        $set: {
+          status,
+        },
+      }
+    );
+    console.log(`🔵 Trade status updated for ${symbol}, as: ${status}`);
+  });
+};
+
 const getStockPastData = async (symbol, to) => {
   if (!to) return null;
   const time = parseInt(new Date(to).getTime() / 1000);
@@ -105,15 +177,6 @@ const sendMail = async (to, subject, html) => {
   });
 };
 
-const dummyTrade = {
-  name: "TATASTEEL",
-  symbol: "TATASTEEL",
-  type: "buy",
-  startPrice: 312,
-  target: 318,
-  sl: 309,
-};
-
 const notifyEmailsWithTrade = (trade) => {
   if (!trade?.symbol) return;
 
@@ -157,13 +220,7 @@ const checkForGoodTrade = async () => {
     .map((item) => parseInt(item));
 
   // returning if not in market hours
-  if (
-    hour < 9 ||
-    hour > 16 ||
-    (hour == 9 && min < 15) ||
-    (hour == 15 && min > 28)
-  )
-    return;
+  if (hour < 9 || hour >= 15 || (hour == 9 && min < 15)) return;
 
   // returning if not near the 5min time frame
   if (
@@ -177,15 +234,8 @@ const checkForGoodTrade = async () => {
   if (!stockData.date) latestDataNotPresent = true;
   else if (new Date(stockData.date) < new Date()) latestDataNotPresent = true;
 
-  const currentDate = new Date();
-  const todayStartTime = new Date(
-    `${currentDate.getFullYear()}/${
-      currentDate.getMonth() + 1
-    }/${currentDate.getDate()}`
-  ).getTime();
   const stockSymbols = Object.values(availableStocks);
 
-  // if (latestDataNotPresent) {
   const responses = await Promise.all(
     stockSymbols.map((item) => getStockPastData(item, Date.now()))
   );
@@ -202,14 +252,14 @@ const checkForGoodTrade = async () => {
       h: [],
     };
   });
-
   stockData.data = data;
   stockData.date = Date.now();
-  // stockData.date = new Date(todayStartTime + 24 * 60 * 60 * 1000);
-  // }
 
   console.log("⏱️ sending recent stock data", currentTimeString);
   io.to("trades").emit("stock-data", stockData);
+
+  // updating trade status
+  completeTodaysTradesStatus();
 
   const allTakenTrades = await Promise.all(
     stockSymbols.map((s) =>
@@ -252,8 +302,10 @@ const checkForGoodTrade = async () => {
 
     const newTrade = new tradeSchema({
       name: item.symbol,
+      symbol: item.symbol,
       ...item.trade,
-      time: Date.now(),
+      status: "taken",
+      time: item.trade?.time ? item.trade.time * 1000 : Date.now(),
       date: new Date().toLocaleDateString("en-in"),
     });
 

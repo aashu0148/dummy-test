@@ -6,6 +6,10 @@ const schema = new mongoose.Schema(
       type: String,
       require: true,
     },
+    symbol: {
+      type: String,
+      require: true,
+    },
     target: {
       type: Number,
       required: true,
@@ -15,6 +19,7 @@ const schema = new mongoose.Schema(
       required: true,
     },
     time: Number,
+    status: String,
     date: String,
     startPrice: Number,
     type: String,
