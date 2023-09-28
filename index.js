@@ -164,7 +164,6 @@ const getMailBodyHTML = ({ symbol, trigger, target, sl, type, time }) => {
     <p style="color: #dc3545; font-weight:600; font-size: 16px; margin-top:-8px;">${sl}</p>
   </div>
 </div>
-
   `;
 };
 
