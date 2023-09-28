@@ -688,7 +688,7 @@ export const takeTrades = async (
           : cci < -100
           ? signalEnum.sell
           : signalEnum.hold;
-      const macdSignal = getMacdSignal(MACD.slice(i - 4, i + 1));
+      const macdSignal = getMacdSignal(MACD.slice(i - 2, i + 1));
       const smaSignal = getSmaCrossedSignal({
         smaLow: smallMA.slice(i - 2, i + 1),
         smaHigh: bigMA.slice(i - 2, i + 1),
