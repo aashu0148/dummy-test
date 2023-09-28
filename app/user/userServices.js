@@ -24,7 +24,7 @@ const loginUser = async (req, res) => {
   const token = `${user.name}_${email}`;
   const newTokenHash = bcrypt.hashSync(token, 5);
 
-  user.token = newTokenHash;
+  // user.token = newTokenHash;
 
   user
     .save()
