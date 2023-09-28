@@ -6,7 +6,6 @@ export const availableStocks = {
   kfinTech: "KFINTECH",
   laOplaRG: "LAOPALA",
   HDFCBANK: "HDFCBANK",
-  UPL: "UPL",
   KOTAKBANK: "KOTAKBANK",
   latentView: "LATENTVIEW",
   ZOMATO: "ZOMATO",
@@ -250,5 +249,20 @@ export const bestStockPresets = {
     },
     useSupportResistances: false,
     vPointOffset: 12,
+  },
+  [availableStocks.KOTAKBANK]: {
+    decisionMakingPoints: 3,
+    additionalIndicators: {
+      willR: true,
+      mfi: false,
+      trend: false,
+      cci: false,
+      stochastic: true,
+      vwap: false,
+      psar: true,
+    },
+    useSupportResistances: true,
+    vPointOffset: 12,
+    bollingerBandStdDev: 2,
   },
 };
