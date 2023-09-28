@@ -124,16 +124,20 @@ const notifyEmailsWithTrade = (trade) => {
   });
 
   emailsToNotify.forEach((email) => {
+    const target = parseFloat(trade.target).toFixed(1);
+    const trigger = parseFloat(trade.startPrice).toFixed(1);
+    const sl = parseFloat(trade.sl).toFixed(1);
+
     sendMail(
       email,
-      `${trade.symbol} | ${trade?.type ? trade.type.toUpperCase() : ""}: ${
-        trade.startPrice
-      } | Target: ${trade.target} | SL: ${trade.sl}`,
+      `${trade.symbol} | ${
+        trade?.type ? trade.type.toUpperCase() : ""
+      }: ${trigger} | Target: ${target} | SL: ${sl}`,
       getMailBodyHTML({
         symbol: trade.symbol,
-        trigger: trade.startPrice,
-        target: trade.target,
-        sl: trade.sl,
+        trigger,
+        target,
+        sl,
         type: trade.type ? trade.type.toUpperCase() : "",
         time: currentTimeString,
       })
