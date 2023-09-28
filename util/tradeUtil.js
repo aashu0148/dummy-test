@@ -377,7 +377,7 @@ export const takeTrades = async (
     psarMaxValue = 0.2,
     superTrendMultiplier = 3,
     mfiPeriod = 14,
-    mfliLow = 23,
+    mfiLow = 23,
     mfiHigh = 83,
     vwapPeriod = 14,
   },
@@ -678,7 +678,7 @@ export const takeTrades = async (
           ? signalEnum.sell
           : signalEnum.hold;
       const mfiSignal =
-        mfi < mfliLow
+        mfi < mfiLow
           ? signalEnum.buy
           : mfi > mfiHigh
           ? signalEnum.sell

@@ -208,7 +208,9 @@ const checkForGoodTrade = async () => {
   io.to("trades").emit("stock-data", stockData);
 
   const allTakenTrades = await Promise.all(
-    stockSymbols.map((s) => takeTrades(stockData.data[s], bestStockPresets[s]))
+    stockSymbols.map((s) =>
+      takeTrades(stockData.data[s], bestStockPresets[s], true)
+    )
   );
 
   const allTrades = stockSymbols.map((s, i) => {
