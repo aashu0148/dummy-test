@@ -30,19 +30,22 @@ const app = express();
 const server = http.createServer(app);
 const io = new socketServer(server, { cors: { origin: "*" } });
 
-app.use(cors());
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
-
-app.use(tradeRoutes);
-app.use(userRoutes);
-app.get("/hi", (_req, res) => res.send("Hello there buddy!"));
-
 const stockData = {
   date: "",
   data: {},
 };
 let lastTradesTaken = "";
+
+app.use(cors());
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
+app.use((req, _res, next) => {
+  req.stockData = stockData;
+  next();
+}, tradeRoutes);
+app.use(userRoutes);
+app.get("/hi", (_req, res) => res.send("Hello there buddy!"));
 
 const checkTradeCompletion = (
   triggerPrice,
