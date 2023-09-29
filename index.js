@@ -219,13 +219,13 @@ const checkForGoodTrade = async () => {
     .map((item) => parseInt(item));
 
   // returning if not in market hours
-  if (hour < 9 || hour >= 15 || (hour == 9 && min < 15)) return;
+  if (hour < 9 || hour >= 15 || (hour == 9 && min < 30)) return;
 
   // returning if not near the 5min time frame
   if (
     (min % 5 > 0 && min % 5 < 4) ||
-    (min % 5 == 4 && sec < 30) ||
-    (min % 5 == 0 && sec > 30)
+    (min % 5 == 4 && sec < 55) ||
+    (min % 5 == 0 && sec > 20)
   )
     return;
 
@@ -318,7 +318,7 @@ const checkForGoodTrade = async () => {
 };
 
 // interval for taking trades
-setInterval(checkForGoodTrade, 20 * 1000);
+setInterval(checkForGoodTrade, 10 * 1000);
 
 server.listen(5000, () => {
   console.log("Backend is up at port 5000");
