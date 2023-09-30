@@ -34,7 +34,6 @@ const stockData = {
   date: "",
   data: {},
 };
-let lastTradesTaken = "";
 
 app.use(cors());
 app.use(express.json());
@@ -46,6 +45,44 @@ app.use((req, _res, next) => {
 }, tradeRoutes);
 app.use(userRoutes);
 app.get("/hi", (_req, res) => res.send("Hello there buddy!"));
+
+const getStockPastData = async (symbol, to) => {
+  if (!to) return null;
+  const time = parseInt(new Date(to).getTime() / 1000);
+
+  const url = `https://priceapi.moneycontrol.com/techCharts/indianMarket/stock/history?symbol=${symbol}&resolution=5&to=${time}&countback=4000&currencyCode=INR`;
+
+  const res = await axios
+    .get(url)
+    .catch((err) => console.log("🔴 ERROR making req", err.message));
+
+  if (res?.data?.s !== "ok") return null;
+
+  return res.data;
+};
+
+export const getAllStocksData = async () => {
+  const stockSymbols = Object.values(availableStocks);
+
+  const responses = await Promise.all(
+    stockSymbols.map((item) => getStockPastData(item, Date.now()))
+  );
+
+  const data = {};
+  stockSymbols.forEach((item, i) => {
+    data[item] = responses[i] || {
+      s: "no",
+      c: [],
+      t: [],
+      v: [],
+      l: [],
+      o: [],
+      h: [],
+    };
+  });
+
+  return data;
+};
 
 const checkTradeCompletion = (
   triggerPrice,
@@ -75,13 +112,10 @@ const checkTradeCompletion = (
   return 0;
 };
 
-const completeTodaysTradesStatus = async () => {
-  const date = new Date().toLocaleDateString("en-in");
-  const trades = await tradeSchema.find({ date });
+const completeTodaysTradesStatus = async (todayTakenTrades = []) => {
+  if (!todayTakenTrades.length) return;
 
-  if (!trades.length) return;
-
-  trades.forEach(async (trade) => {
+  todayTakenTrades.forEach(async (trade) => {
     if (trade.status == "profit" || trade.status == "loss") return;
 
     const isSellTrade = trade.type.toLowerCase() == "sell";
@@ -117,21 +151,6 @@ const completeTodaysTradesStatus = async () => {
     );
     console.log(`🔵 Trade status updated for ${symbol}, as: ${status}`);
   });
-};
-
-const getStockPastData = async (symbol, to) => {
-  if (!to) return null;
-  const time = parseInt(new Date(to).getTime() / 1000);
-
-  const url = `https://priceapi.moneycontrol.com/techCharts/indianMarket/stock/history?symbol=${symbol}&resolution=5&to=${time}&countback=4000&currencyCode=INR`;
-
-  const res = await axios
-    .get(url)
-    .catch((err) => console.log("🔴 ERROR making req", err.message));
-
-  if (res?.data?.s !== "ok") return null;
-
-  return res.data;
 };
 
 const getMailBodyHTML = ({ symbol, trigger, target, sl, type, time }) => {
@@ -213,6 +232,12 @@ const notifyEmailsWithTrade = (trade) => {
 };
 
 const checkForGoodTrade = async () => {
+  const weekDay = new Date()
+    .toLocaleString("en-in", {
+      timeZone: "Asia/Kolkata",
+      weekday: "short",
+    })
+    .toLowerCase();
   const currentTimeString = new Date().toLocaleTimeString("en-in", {
     timeZone: "Asia/Kolkata",
     hour12: false,
@@ -222,7 +247,14 @@ const checkForGoodTrade = async () => {
     .map((item) => parseInt(item));
 
   // returning if not in market hours
-  if (hour < 9 || hour >= 15 || (hour == 9 && min < 30)) return;
+  if (
+    weekDay == "sat" ||
+    weekDay == "sun" ||
+    hour < 9 ||
+    hour >= 15 ||
+    (hour == 9 && min < 30)
+  )
+    return;
 
   // returning if not near the 5min time frame
   if (
@@ -238,30 +270,19 @@ const checkForGoodTrade = async () => {
 
   const stockSymbols = Object.values(availableStocks);
 
-  const responses = await Promise.all(
-    stockSymbols.map((item) => getStockPastData(item, Date.now()))
-  );
+  const data = await getAllStocksData();
 
-  const data = {};
-  stockSymbols.forEach((item, i) => {
-    data[item] = responses[i] || {
-      s: "no",
-      c: [],
-      t: [],
-      v: [],
-      l: [],
-      o: [],
-      h: [],
-    };
-  });
   stockData.data = data;
   stockData.date = Date.now();
 
   console.log("⏱️ sending recent stock data", currentTimeString);
   io.to("trades").emit("stock-data", stockData);
 
+  const todayDate = new Date().toLocaleDateString("en-in");
+  const todaysTakenTrades = await tradeSchema.find({ date: todayDate });
+
   // updating trade status
-  completeTodaysTradesStatus();
+  completeTodaysTradesStatus(todaysTakenTrades);
 
   const allTakenTrades = await Promise.all(
     stockSymbols.map((s) =>
@@ -283,10 +304,7 @@ const checkForGoodTrade = async () => {
 
   const trades = allTrades.filter((item) => item.trades?.length);
 
-  if (
-    !trades.length ||
-    lastTradesTaken == trades.map((item) => item.symbol).join(",")
-  ) {
+  if (!trades.length) {
     io.to("trades").emit("test", allTrades);
 
     if (!trades.length)
@@ -297,10 +315,22 @@ const checkForGoodTrade = async () => {
     return;
   }
 
-  lastTradesTaken = trades.map((item) => item.symbol).join(",");
+  const isAllowedToTakeThisTrade = (trade) => {
+    const unfinishedSimilarTrades = Array.from(todaysTakenTrades).filter(
+      (item) =>
+        item.status == "taken" &&
+        item.type == trade.type &&
+        item.symbol == trade.symbol
+    );
 
+    return unfinishedSimilarTrades.length > 0 ? false : true;
+  };
+
+  let tookATrade = false;
   for (let i = 0; i < trades.length; ++i) {
     const item = trades[i];
+
+    if (!isAllowedToTakeThisTrade(item)) continue;
 
     const newTrade = new tradeSchema({
       name: item.symbol,
@@ -314,10 +344,13 @@ const checkForGoodTrade = async () => {
     notifyEmailsWithTrade({ ...item.trade, symbol: item.symbol });
 
     await newTrade.save();
+    tookATrade = true;
   }
 
-  console.log("🟢 firing event to frontend");
-  io.to("trades").emit("trade-taken");
+  if (tookATrade) {
+    console.log("🟢 firing event to frontend");
+    io.to("trades").emit("trade-taken");
+  }
 };
 
 // interval for taking trades

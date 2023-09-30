@@ -380,10 +380,15 @@ export const takeTrades = async (
     mfiLow = 23,
     mfiHigh = 83,
     vwapPeriod = 14,
+    targetProfitPercent = 1.4,
+    stopLossPercent = 0.7,
   },
-  takeOneRecentTrade = true
+  takeOneRecentTrade = false
 ) => {
   if (!priceData.c?.length) return { trades: [], analytics: [] };
+
+  if (targetProfitPercent <= 0) targetProfitPercent = 0.1;
+  if (stopLossPercent <= 0) stopLossPercent = 0.1;
 
   const indicatorSmallMA = new technicalIndicatorSMA(smaLowPeriod);
   const indicatorBigMA = new technicalIndicatorSMA(smaHighPeriod);
@@ -431,18 +436,35 @@ export const takeTrades = async (
     vPs: [],
   };
 
-  let isTradeTaken = false,
-    targetProfitPercent = 1.4 / 100,
-    stopLossPercent = 0.7 / 100,
-    trade = {},
-    trades = [];
-
-  let analytics = [];
+  let trades = [],
+    analytics = [];
 
   // allowing the algo to take only one trade for last price
   const startTakingTradeIndex = takeOneRecentTrade
     ? priceData.c.length - 1
-    : 2000;
+    : 200;
+
+  const updateIndicatorValues = (high, low, price) => {
+    const smaL = indicatorSmallMA.nextValue(price);
+    const smaH = indicatorBigMA.nextValue(price);
+    const rsi = indicatorRsi.nextValue(price);
+    const cci = indicatorCCI.nextValue(high, low, price);
+    const macd = indicatorMacd.nextValue(price);
+    const bollingerBand = indicatorBollingerBands.nextValue(price);
+    const stochastic = indicatorStochastic.nextValue(high, low, price).k;
+    const psar = indicatorPSAR.nextValue(high, low, price);
+    const superTrend = indicatorSuperTrend.nextValue(high, low, price);
+
+    indicators.smallMA.push(smaL);
+    indicators.bigMA.push(smaH);
+    indicators.rsi.push(rsi);
+    indicators.cci.push(cci);
+    indicators.macd.push(macd || {});
+    indicators.bollingerBand.push(bollingerBand || {});
+    indicators.stochastic.push(stochastic);
+    indicators.psar.push(psar);
+    indicators.superTrend.push(superTrend);
+  };
 
   const vps = getVPoints({
     offset: vPointOffset,
@@ -482,29 +504,67 @@ export const takeTrades = async (
     const low = priceData.l[i];
     const price = priceData.c[i];
 
-    const smaL = indicatorSmallMA.nextValue(price);
-    const smaH = indicatorBigMA.nextValue(price);
-    const rsi = indicatorRsi.nextValue(price);
-    const cci = indicatorCCI.nextValue(high, low, price);
-    const macd = indicatorMacd.nextValue(price);
-    const bollingerBand = indicatorBollingerBands.nextValue(price);
-    const stochastic = indicatorStochastic.nextValue(high, low, price).k;
-    const psar = indicatorPSAR.nextValue(high, low, price);
-    const superTrend = indicatorSuperTrend.nextValue(high, low, price);
-
-    indicators.lastCalculatedIndex = i;
-    indicators.smallMA.push(smaL);
-    indicators.bigMA.push(smaH);
-    indicators.rsi.push(rsi);
-    indicators.cci.push(cci);
-    indicators.macd.push(macd || {});
-    indicators.bollingerBand.push(bollingerBand || {});
-    indicators.stochastic.push(stochastic);
-    indicators.psar.push(psar);
-    indicators.superTrend.push(superTrend);
+    updateIndicatorValues(high, low, price);
   }
 
+  const checkTradeCompletion = (
+    triggerPrice,
+    prices,
+    target,
+    sl,
+    isSellTrade = false
+  ) => {
+    if (
+      !triggerPrice ||
+      !target ||
+      !sl ||
+      !Array.isArray(prices) ||
+      !prices?.length
+    )
+      return 0;
+
+    for (let i = 0; i < prices.length; ++i) {
+      const price = prices[i];
+
+      if ((isSellTrade && price <= target) || (!isSellTrade && price >= target))
+        return 1;
+      if ((isSellTrade && price >= sl) || (!isSellTrade && price <= sl))
+        return -1;
+    }
+
+    return 0;
+  };
+
+  const analyzeAllTradesForCompletion = async (currentIndex) => {
+    if (!trades.length || !currentIndex) return;
+
+    trades.forEach(async (trade, i) => {
+      if (trade.status == "profit" || trade.status == "loss") return;
+
+      const isSellTrade = trade.type == signalEnum.sell;
+      const tradeStartIndex = trade.startIndex;
+
+      const statusNumber = checkTradeCompletion(
+        trade.startPrice,
+        priceData.c.slice(tradeStartIndex, currentIndex),
+        trade.target,
+        trade.sl,
+        isSellTrade
+      );
+
+      const status =
+        statusNumber == 1 ? "profit" : statusNumber == -1 ? "loss" : "taken";
+      if (status == trade.status) return;
+
+      // update the trade status
+      trades[i].result = status;
+      trades[i].status = status;
+    });
+  };
+
   for (let i = startTakingTradeIndex; i < priceData.c.length; i++) {
+    analyzeAllTradesForCompletion(i);
+
     const prices = priceData.c.slice(0, i + 1);
     const highs = priceData.h.slice(0, i + 1);
     const lows = priceData.l.slice(0, i + 1);
@@ -515,385 +575,314 @@ export const takeTrades = async (
     const high = priceData.h[i];
     const low = priceData.l[i];
 
-    if (isTradeTaken) {
-      if (trade.type == signalEnum.buy) {
-        if (price > trade.target) {
-          trades.push({
-            result: "profit",
-            profit: trade.target - trade.startPrice,
-            endPrice: price,
-            endIndex: i,
-            ...trade,
-          });
-          isTradeTaken = false;
-          i = trade.startIndex;
-        } else if (price < trade.sl) {
-          trades.push({
-            result: "loss",
-            profit: trade.sl - trade.startPrice,
-            endPrice: price,
-            endIndex: i,
-            ...trade,
-          });
-          isTradeTaken = false;
-          i = trade.startIndex;
-        }
-      } else {
-        if (price < trade.target) {
-          trades.push({
-            result: "profit",
-            profit: trade.startPrice - trade.target,
-            endPrice: price,
-            endIndex: i,
-            ...trade,
-          });
-          isTradeTaken = false;
-          i = trade.startIndex;
-        } else if (price > trade.sl) {
-          trades.push({
-            result: "loss",
-            profit: trade.startPrice - trade.sl,
-            endPrice: price,
-            endIndex: i,
-            ...trade,
-          });
-          isTradeTaken = false;
-          i = trade.startIndex;
-        }
-      }
-    } else {
-      if (indicators.lastCalculatedIndex < i) {
-        const smaL = indicatorSmallMA.nextValue(price);
-        const smaH = indicatorBigMA.nextValue(price);
-        const rsi = indicatorRsi.nextValue(price);
-        const cci = indicatorCCI.nextValue(high, low, price);
-        const macd = indicatorMacd.nextValue(price);
-        const bollingerBand = indicatorBollingerBands.nextValue(price);
-        const stochastic = indicatorStochastic.nextValue(high, low, price).k;
-        const psar = indicatorPSAR.nextValue(high, low, price);
-        const superTrend = indicatorSuperTrend.nextValue(high, low, price);
-        const vps = getVPoints({
-          offset: vPointOffset,
-          prices: prices,
-          startFrom: i - 40,
-          previousOutput: indicators.vPs.filter((item) => item?.index < i - 40),
-        });
-        const obv = await IXJIndicators.obv(prices, vols);
-        const willR = await IXJIndicators.willr(
-          highs,
-          lows,
-          prices,
-          willRPeriod
-        );
-        const mfi = await IXJIndicators.mfi(
-          highs,
-          lows,
-          prices,
-          vols,
-          mfiPeriod
-        );
-        const vwap = await IXJIndicators.vwap(
-          highs,
-          lows,
-          prices,
-          vols,
-          vwapPeriod
-        );
+    updateIndicatorValues(high, low, price);
 
-        indicators.lastCalculatedIndex = i;
-        indicators.vPs = vps;
-        indicators.obv = obv;
-        indicators.vwap = vwap;
-        indicators.mfi = mfi;
-        indicators.williamR = willR;
-        indicators.smallMA.push(smaL);
-        indicators.bigMA.push(smaH);
-        indicators.rsi.push(rsi);
-        indicators.cci.push(cci);
-        indicators.stochastic.push(stochastic);
-        indicators.psar.push(psar);
-        indicators.superTrend.push(superTrend);
-        indicators.macd.push(macd || {});
-        indicators.bollingerBand.push(bollingerBand || {});
-      }
+    const ind_vps = getVPoints({
+      offset: vPointOffset,
+      prices: prices,
+      startFrom: i - 40,
+      previousOutput: indicators.vPs.filter((item) => item?.index < i - 40),
+    });
+    const ind_obv = await IXJIndicators.obv(prices, vols);
+    const ind_willR = await IXJIndicators.willr(
+      highs,
+      lows,
+      prices,
+      willRPeriod
+    );
+    const ind_mfi = await IXJIndicators.mfi(
+      highs,
+      lows,
+      prices,
+      vols,
+      mfiPeriod
+    );
+    const ind_vwap = await IXJIndicators.vwap(
+      highs,
+      lows,
+      prices,
+      vols,
+      vwapPeriod
+    );
 
-      const smallMA = indicators.smallMA;
-      const bigMA = indicators.bigMA;
-      const CCI = indicators.cci;
-      const RSI = indicators.rsi;
-      const MACD = indicators.macd;
-      const PSAR = indicators.psar;
-      const ST = indicators.superTrend;
-      const BB = indicators.bollingerBand;
-      const stochastic = indicators.stochastic;
+    indicators.vPs = ind_vps;
+    indicators.obv = ind_obv;
+    indicators.vwap = ind_vwap;
+    indicators.mfi = ind_mfi;
+    indicators.williamR = ind_willR;
 
-      const ranges = getSupportResistanceRangesFromVPoints(
-        indicators.vPs,
-        prices
-      );
-      const strongSupportResistances = ranges.filter(
-        (item) => item?.stillStrong
-      );
+    const smallMA = indicators.smallMA;
+    const bigMA = indicators.bigMA;
+    const CCI = indicators.cci;
+    const RSI = indicators.rsi;
+    const MACD = indicators.macd;
+    const PSAR = indicators.psar;
+    const ST = indicators.superTrend;
+    const BB = indicators.bollingerBand;
+    const stochastic = indicators.stochastic;
 
-      const pricesWithTrends = getTrendEstimates(prices, i - 40);
-      const trend = pricesWithTrends[i]?.trend;
-      const rsi = RSI[i];
-      const cci = CCI[i];
-      const mfi = indicators.mfi[i];
-      const vwap = indicators.vwap[i];
-      const willR = indicators.williamR[i];
-      const psar = PSAR[i];
-      const superTrend = ST[i];
+    const ranges = getSupportResistanceRangesFromVPoints(
+      indicators.vPs,
+      prices
+    );
+    const strongSupportResistances = ranges.filter((item) => item?.stillStrong);
 
-      const targetProfit = targetProfitPercent * price;
-      const stopLoss = stopLossPercent * price;
+    const pricesWithTrends = getTrendEstimates(prices, i - 40);
+    const trend = pricesWithTrends[i]?.trend;
+    const rsi = RSI[i];
+    const cci = CCI[i];
+    const mfi = indicators.mfi[i];
+    const vwap = indicators.vwap[i];
+    const willR = indicators.williamR[i];
+    const psar = PSAR[i];
+    const superTrend = ST[i];
 
-      const isSRBreakout = strongSupportResistances.some(
-        (item) => item.max < price && item.max > prevPrice
-      );
-      const isSRBreakdown = strongSupportResistances.some(
-        (item) => item.min > price && item.min < prevPrice
-      );
-      const srSignal = isSRBreakout
+    const targetProfit = (targetProfitPercent / 100) * price;
+    const stopLoss = (stopLossPercent / 100) * price;
+
+    const isSRBreakout = strongSupportResistances.some(
+      (item) => item.max < price && item.max > prevPrice
+    );
+    const isSRBreakdown = strongSupportResistances.some(
+      (item) => item.min > price && item.min < prevPrice
+    );
+    const srSignal = isSRBreakout
+      ? signalEnum.buy
+      : isSRBreakdown
+      ? signalEnum.sell
+      : signalEnum.hold;
+    const stochasticSignal =
+      stochastic[i] < stochasticLow
+        ? signalEnum.sell
+        : stochastic[i] > stochasticHigh
         ? signalEnum.buy
-        : isSRBreakdown
+        : signalEnum.hold;
+    const rsiSignal =
+      rsi < rsiLow
+        ? signalEnum.buy
+        : rsi > rsiHigh
         ? signalEnum.sell
         : signalEnum.hold;
-      const stochasticSignal =
-        stochastic[i] < stochasticLow
-          ? signalEnum.sell
-          : stochastic[i] > stochasticHigh
-          ? signalEnum.buy
-          : signalEnum.hold;
-      const rsiSignal =
-        rsi < rsiLow
-          ? signalEnum.buy
-          : rsi > rsiHigh
-          ? signalEnum.sell
-          : signalEnum.hold;
-      const willRSignal =
-        willR < willRLow
-          ? signalEnum.buy
-          : willR > willRHigh
-          ? signalEnum.sell
-          : signalEnum.hold;
-      const mfiSignal =
-        mfi < mfiLow
-          ? signalEnum.buy
-          : mfi > mfiHigh
-          ? signalEnum.sell
-          : signalEnum.hold;
-      const vwapSignal = price > vwap ? signalEnum.buy : signalEnum.sell;
-      const cciSignal =
-        cci > 100
-          ? signalEnum.buy
-          : cci < -100
-          ? signalEnum.sell
-          : signalEnum.hold;
-      const macdSignal = getMacdSignal(MACD.slice(i - 2, i + 1));
-      const smaSignal = getSmaCrossedSignal({
-        smaLow: smallMA.slice(i - 2, i + 1),
-        smaHigh: bigMA.slice(i - 2, i + 1),
+    const willRSignal =
+      willR < willRLow
+        ? signalEnum.buy
+        : willR > willRHigh
+        ? signalEnum.sell
+        : signalEnum.hold;
+    const mfiSignal =
+      mfi < mfiLow
+        ? signalEnum.buy
+        : mfi > mfiHigh
+        ? signalEnum.sell
+        : signalEnum.hold;
+    const vwapSignal = price > vwap ? signalEnum.buy : signalEnum.sell;
+    const cciSignal =
+      cci > 100
+        ? signalEnum.buy
+        : cci < -100
+        ? signalEnum.sell
+        : signalEnum.hold;
+    const macdSignal = getMacdSignal(MACD.slice(i - 2, i + 1));
+    const smaSignal = getSmaCrossedSignal({
+      smaLow: smallMA.slice(i - 2, i + 1),
+      smaHigh: bigMA.slice(i - 2, i + 1),
+    });
+    const trendSignal =
+      trend == trendEnum.down
+        ? signalEnum.sell
+        : trend == trendEnum.up
+        ? signalEnum.buy
+        : signalEnum.hold;
+    const bollingerBandSignal =
+      price >= BB[i]?.upper
+        ? signalEnum.sell
+        : price <= BB[i]?.lower
+        ? signalEnum.buy
+        : signalEnum.hold;
+    const psarSignal =
+      price >= psar && superTrend?.direction == 1
+        ? signalEnum.buy
+        : price <= psar && superTrend?.direction == -1
+        ? signalEnum.sell
+        : signalEnum.hold;
+
+    const initialSignal =
+      signalWeight[srSignal] * indicatorsWeightEnum.sr +
+      signalWeight[rsiSignal] * indicatorsWeightEnum.rsi +
+      signalWeight[bollingerBandSignal] * indicatorsWeightEnum.bollingerBand +
+      signalWeight[macdSignal] * indicatorsWeightEnum.macd +
+      signalWeight[smaSignal] * indicatorsWeightEnum.movingAvg;
+
+    const furtherIndicatorSignals = [];
+    if (additionalIndicators.cci)
+      furtherIndicatorSignals.push(
+        signalWeight[cciSignal] * indicatorsWeightEnum.cci
+      );
+    if (additionalIndicators.mfi)
+      furtherIndicatorSignals.push(
+        signalWeight[mfiSignal] * indicatorsWeightEnum.mfi
+      );
+    if (additionalIndicators.stochastic)
+      furtherIndicatorSignals.push(
+        signalWeight[stochasticSignal] * indicatorsWeightEnum.stochastic
+      );
+    if (additionalIndicators.vwap)
+      furtherIndicatorSignals.push(
+        signalWeight[vwapSignal] * indicatorsWeightEnum.vwap
+      );
+    if (additionalIndicators.psar)
+      furtherIndicatorSignals.push(
+        signalWeight[psarSignal] * indicatorsWeightEnum.psar
+      );
+    if (additionalIndicators.trend)
+      furtherIndicatorSignals.push(
+        signalWeight[trendSignal] * indicatorsWeightEnum.trend
+      );
+    if (additionalIndicators.willR)
+      furtherIndicatorSignals.push(
+        signalWeight[willRSignal] * indicatorsWeightEnum.williamR
+      );
+
+    const additionalIndicatorsWeight =
+      furtherIndicatorSignals.reduce((acc, curr) => curr + acc, 0) || 0;
+
+    const decisionMakingPoint = decisionMakingPoints || 3;
+
+    let isBuySignal =
+      initialSignal + additionalIndicatorsWeight >= decisionMakingPoint;
+    let isSellSignal =
+      initialSignal + additionalIndicatorsWeight <= -1 * decisionMakingPoint;
+
+    const analytic = {
+      additionalIndicators,
+      mainSignals: {
+        rsiSignal,
+        macdSignal,
+        srSignal,
+        bollingerBandSignal,
+        smaSignal,
+      },
+      otherSignals: {
+        trend: trendSignal,
+        cci: cciSignal,
+        stochastic: stochasticSignal,
+        psarSignal,
+        willRSignal,
+        mfiSignal,
+        vwapSignal,
+      },
+      netSignal: isBuySignal
+        ? signalEnum.buy
+        : isSellSignal
+        ? signalEnum.sell
+        : signalEnum.hold,
+      index: i,
+      price,
+    };
+
+    if (!isBuySignal && !isSellSignal)
+      analytics.push({
+        ...analytic,
       });
-      const trendSignal =
-        trend == trendEnum.down
-          ? signalEnum.sell
-          : trend == trendEnum.up
-          ? signalEnum.buy
-          : signalEnum.hold;
-      const bollingerBandSignal =
-        price >= BB[i]?.upper
-          ? signalEnum.sell
-          : price <= BB[i]?.lower
-          ? signalEnum.buy
-          : signalEnum.hold;
-      const psarSignal =
-        price >= psar && superTrend?.direction == 1
-          ? signalEnum.buy
-          : price <= psar && superTrend?.direction == -1
-          ? signalEnum.sell
-          : signalEnum.hold;
 
-      const initialSignal =
-        signalWeight[srSignal] * indicatorsWeightEnum.sr +
-        signalWeight[rsiSignal] * indicatorsWeightEnum.rsi +
-        signalWeight[bollingerBandSignal] * indicatorsWeightEnum.bollingerBand +
-        signalWeight[macdSignal] * indicatorsWeightEnum.macd +
-        signalWeight[smaSignal] * indicatorsWeightEnum.movingAvg;
+    if (isBuySignal) {
+      let nearestResistance;
+      for (let j = 0; j < strongSupportResistances.length; ++j) {
+        const range = strongSupportResistances[j];
+        if (range.max < price) continue;
 
-      const furtherIndicatorSignals = [];
-      if (additionalIndicators.cci)
-        furtherIndicatorSignals.push(
-          signalWeight[cciSignal] * indicatorsWeightEnum.cci
-        );
-      if (additionalIndicators.mfi)
-        furtherIndicatorSignals.push(
-          signalWeight[mfiSignal] * indicatorsWeightEnum.mfi
-        );
-      if (additionalIndicators.stochastic)
-        furtherIndicatorSignals.push(
-          signalWeight[stochasticSignal] * indicatorsWeightEnum.stochastic
-        );
-      if (additionalIndicators.vwap)
-        furtherIndicatorSignals.push(
-          signalWeight[vwapSignal] * indicatorsWeightEnum.vwap
-        );
-      if (additionalIndicators.psar)
-        furtherIndicatorSignals.push(
-          signalWeight[psarSignal] * indicatorsWeightEnum.psar
-        );
-      if (additionalIndicators.trend)
-        furtherIndicatorSignals.push(
-          signalWeight[trendSignal] * indicatorsWeightEnum.trend
-        );
-      if (additionalIndicators.willR)
-        furtherIndicatorSignals.push(
-          signalWeight[willRSignal] * indicatorsWeightEnum.williamR
-        );
+        // if price is in between a range
+        if (range.min < price) {
+          nearestResistance = range.max;
+          break;
+        }
 
-      const additionalIndicatorsWeight =
-        furtherIndicatorSignals.reduce((acc, curr) => curr + acc, 0) || 0;
+        if (!nearestResistance) nearestResistance = range.min;
 
-      const decisionMakingPoint = decisionMakingPoints || 3;
+        if (range.min < nearestResistance) nearestResistance = range.min;
+      }
 
-      let isBuySignal =
-        initialSignal + additionalIndicatorsWeight >= decisionMakingPoint;
-      let isSellSignal =
-        initialSignal + additionalIndicatorsWeight <= -1 * decisionMakingPoint;
+      const possibleProfit = nearestResistance
+        ? nearestResistance - price
+        : targetProfit;
 
-      const analytic = {
-        additionalIndicators,
-        mainSignals: {
-          rsiSignal,
-          macdSignal,
-          srSignal,
-          bollingerBandSignal,
-          smaSignal,
-        },
-        otherSignals: {
-          trend: trendSignal,
-          cci: cciSignal,
-          stochastic: stochasticSignal,
-          psarSignal,
-          willRSignal,
-          mfiSignal,
-          vwapSignal,
-        },
-        netSignal: isBuySignal
-          ? signalEnum.buy
-          : isSellSignal
-          ? signalEnum.sell
-          : signalEnum.hold,
-        index: i,
-        price,
+      // updating analytic
+      analytic.nearestResistance = nearestResistance;
+      analytic.possibleProfit = possibleProfit;
+      analytic.targetProfit = targetProfit;
+      analytics.push({
+        ...analytic,
+      });
+
+      if (possibleProfit < targetProfit && useSupportResistances) continue;
+
+      const trade = {
+        time: priceData.t[i],
+        startIndex: i,
+        startPrice: price,
+        type: signalEnum.buy,
+        target: price + targetProfit,
+        sl: price - stopLoss,
+        analytics: analytic,
+        nearestResistance,
+        status: "taken",
       };
 
-      if (!isBuySignal && !isSellSignal)
-        analytics.push({
-          ...analytic,
-        });
+      const existingSimilarTrade = trades.filter(
+        (item) => item.status == "taken" && item.type == trade.type
+      ).length;
 
-      if (isBuySignal) {
-        // neglect trade if last trade is recent and type of BUY
-        const lastTrade = trades.length ? trades[trades.length - 1] : {};
-        if (lastTrade?.type) {
-          if (lastTrade.type == signalEnum.buy && i - lastTrade.startIndex < 4)
-            continue;
+      if (!existingSimilarTrade) trades.push(trade);
+    } else if (isSellSignal) {
+      let nearestSupport;
+      for (let j = 0; j < strongSupportResistances.length; ++j) {
+        const range = strongSupportResistances[j];
+        if (range.min > price) continue;
+
+        // if price is in between a range
+        if (range.max > price) {
+          nearestSupport = range.min;
+          break;
         }
 
-        let nearestResistance;
-        for (let j = 0; j < strongSupportResistances.length; ++j) {
-          const range = strongSupportResistances[j];
-          if (range.max < price) continue;
+        if (!nearestSupport) nearestSupport = range.max;
 
-          // if price is in between a range
-          if (range.min < price) {
-            nearestResistance = range.max;
-            break;
-          }
-
-          if (!nearestResistance) nearestResistance = range.min;
-
-          if (range.min < nearestResistance) nearestResistance = range.min;
-        }
-
-        const possibleProfit = nearestResistance
-          ? nearestResistance - price
-          : targetProfit;
-
-        // updating analytic
-        analytic.nearestResistance = nearestResistance;
-        analytic.possibleProfit = possibleProfit;
-        analytic.targetProfit = targetProfit;
-        analytics.push({
-          ...analytic,
-        });
-
-        if (possibleProfit < targetProfit && useSupportResistances) continue;
-
-        isTradeTaken = true;
-        trade = {
-          time: priceData.t[i],
-          startIndex: i,
-          startPrice: price,
-          type: signalEnum.buy,
-          target: price + targetProfit,
-          sl: price - stopLoss,
-          analytics: analytic,
-          nearestResistance,
-        };
-        if (takeOneRecentTrade) trades.push(trade);
-      } else if (isSellSignal) {
-        // neglect trade if last trade is recent and type of SELL
-        const lastTrade = trades.length ? trades[trades.length - 1] : {};
-        if (lastTrade?.type) {
-          if (lastTrade.type == signalEnum.sell && i - lastTrade.startIndex < 4)
-            continue;
-        }
-
-        let nearestSupport;
-        for (let j = 0; j < strongSupportResistances.length; ++j) {
-          const range = strongSupportResistances[j];
-          if (range.min > price) continue;
-
-          // if price is in between a range
-          if (range.max > price) {
-            nearestSupport = range.min;
-            break;
-          }
-
-          if (!nearestSupport) nearestSupport = range.max;
-
-          if (range.max < nearestSupport) nearestSupport = range.max;
-        }
-
-        const possibleProfit = nearestSupport
-          ? price - nearestSupport
-          : targetProfit;
-
-        // updating analytic
-        analytic.nearestSupport = nearestSupport;
-        analytic.possibleProfit = possibleProfit;
-        analytic.targetProfit = targetProfit;
-        analytics.push({
-          ...analytic,
-        });
-
-        if (possibleProfit < targetProfit && useSupportResistances) continue;
-
-        isTradeTaken = true;
-        trade = {
-          time: priceData.t[i],
-          startIndex: i,
-          startPrice: price,
-          type: signalEnum.sell,
-          target: price - targetProfit,
-          sl: price + stopLoss,
-          analytics: analytic,
-          nearestSupport,
-        };
-        if (takeOneRecentTrade) trades.push(trade);
+        if (range.max < nearestSupport) nearestSupport = range.max;
       }
+
+      const possibleProfit = nearestSupport
+        ? price - nearestSupport
+        : targetProfit;
+
+      // updating analytic
+      analytic.nearestSupport = nearestSupport;
+      analytic.possibleProfit = possibleProfit;
+      analytic.targetProfit = targetProfit;
+      analytics.push({
+        ...analytic,
+      });
+
+      if (possibleProfit < targetProfit && useSupportResistances) continue;
+
+      const trade = {
+        time: priceData.t[i],
+        startIndex: i,
+        startPrice: price,
+        type: signalEnum.sell,
+        target: price - targetProfit,
+        sl: price + stopLoss,
+        analytics: analytic,
+        nearestSupport,
+        status: "taken",
+      };
+
+      const existingSimilarTrade = trades.filter(
+        (item) => item.status == "taken" && item.type == trade.type
+      ).length
+        ? true
+        : false;
+
+      if (!existingSimilarTrade) trades.push(trade);
     }
   }
 
