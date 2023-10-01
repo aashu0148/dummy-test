@@ -11,6 +11,7 @@ dotenv.config();
 import tradeSchema from "./app/trades/tradeSchema.js";
 import tradeRoutes from "./app/trades/tradeRoutes.js";
 import SocketEvents from "./app/socket/events.js";
+import presetRoutes from "./app/presets/presetRoutes.js";
 import userRoutes from "./app/user/userRoutes.js";
 import { takeTrades } from "./util/tradeUtil.js";
 import { availableStocks, bestStockPresets } from "./util/constants.js";
@@ -43,6 +44,7 @@ app.use((req, _res, next) => {
   req.stockData = stockData;
   next();
 }, tradeRoutes);
+app.use(presetRoutes);
 app.use(userRoutes);
 app.get("/hi", (_req, res) => res.send("Hello there buddy!"));
 
