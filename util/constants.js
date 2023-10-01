@@ -25,6 +25,7 @@ export const availableStocks = {
   INDIANB: "INDIANB",
   ABFRL: "ABFRL",
   DEVYANI: "DEVYANI",
+  PNB: "PNB",
 };
 
 export const bestStockPresets = {
