@@ -9,12 +9,14 @@ import dotenv from "dotenv";
 dotenv.config();
 
 import tradeSchema from "./app/trades/tradeSchema.js";
+import presetSchema from "./app/presets/presetSchema.js";
+import stocksSchema from "./app/stocks/stocksSchema.js";
 import tradeRoutes from "./app/trades/tradeRoutes.js";
 import SocketEvents from "./app/socket/events.js";
 import presetRoutes from "./app/presets/presetRoutes.js";
+import stockRoutes from "./app/stocks/stocksRoutes.js";
 import userRoutes from "./app/user/userRoutes.js";
 import { takeTrades } from "./util/tradeUtil.js";
-import { availableStocks, bestStockPresets } from "./util/constants.js";
 
 const emailsToNotify = ["aashu.1st@gmail.com", "hariomparasher@gmail.com"];
 const gmailMail = process.env.GMAIL_MAIL;
@@ -40,11 +42,24 @@ app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+const updateStockData = (newData) => {
+  if (typeof newData !== "object" || !Object.keys(newData).length) return;
+
+  stockData.date = Date.now();
+  stockData.data = newData;
+};
+
 app.use((req, _res, next) => {
   req.stockData = stockData;
+  req.updateStockData = updateStockData;
   next();
 }, tradeRoutes);
-app.use(presetRoutes);
+app.use((req, _res, next) => {
+  req.stockData = stockData;
+  req.updateStockData = updateStockData;
+  next();
+}, presetRoutes);
+app.use(stockRoutes);
 app.use(userRoutes);
 app.get("/hi", (_req, res) => res.send("Hello there buddy!"));
 
@@ -63,15 +78,13 @@ const getStockPastData = async (symbol, to) => {
   return res.data;
 };
 
-export const getAllStocksData = async () => {
-  const stockSymbols = Object.values(availableStocks);
-
+export const getAllStocksData = async (symbols = []) => {
   const responses = await Promise.all(
-    stockSymbols.map((item) => getStockPastData(item, Date.now()))
+    symbols.map((item) => getStockPastData(item, Date.now()))
   );
 
   const data = {};
-  stockSymbols.forEach((item, i) => {
+  symbols.forEach((item, i) => {
     data[item] = responses[i] || {
       s: "no",
       c: [],
@@ -271,9 +284,10 @@ const checkForGoodTrade = async () => {
   if (!stockData.date) latestDataNotPresent = true;
   else if (new Date(stockData.date) < new Date()) latestDataNotPresent = true;
 
-  const stockSymbols = Object.values(availableStocks);
+  const allAvailableStocks = await stocksSchema.find({});
+  const stockSymbols = allAvailableStocks.map((item) => item.symbol);
 
-  const data = await getAllStocksData();
+  const data = await getAllStocksData(stockSymbols);
 
   stockData.data = data;
   stockData.date = Date.now();
@@ -283,14 +297,18 @@ const checkForGoodTrade = async () => {
 
   const todayDate = new Date().toLocaleDateString("en-in");
   const todaysTakenTrades = await tradeSchema.find({ date: todayDate });
+  const presets = await presetSchema.find({});
 
   // updating trade status
   completeTodaysTradesStatus(todaysTakenTrades);
 
   const allTakenTrades = await Promise.all(
-    stockSymbols.map((s) =>
-      takeTrades(stockData.data[s], bestStockPresets[s], true)
-    )
+    stockSymbols.map((s) => {
+      const bestPresetForStock =
+        presets.find((p) => p.symbol == s)?.preset || {};
+
+      return takeTrades(stockData.data[s], bestPresetForStock || {}, true);
+    })
   );
 
   const allTrades = stockSymbols.map((s, i) => {

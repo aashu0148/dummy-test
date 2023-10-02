@@ -1,6 +1,6 @@
 import { getAllStocksData } from "../../index.js";
-import { bestStockPresets } from "../../util/constants.js";
 import { createError, createResponse } from "../../util/util.js";
+import stocksSchema from "../stocks/stocksSchema.js";
 import tradeSchema from "./tradeSchema.js";
 
 const getTodayTrades = async (req, res) => {
@@ -11,22 +11,22 @@ const getTodayTrades = async (req, res) => {
   createResponse(res, trades);
 };
 
-const getBestStockPresets = async (req, res) => {
-  createResponse(res, bestStockPresets);
-};
-
 const getRecentAvailableStockData = async (req, res) => {
   const data = req.stockData;
   if (typeof data?.data !== "object" || !Object.keys(data.data).length) {
-    const newData = await getAllStocksData();
+    const allStocks = await stocksSchema.find({});
+    const newData = await getAllStocksData(
+      allStocks.map((item) => item.symbol)
+    );
 
     if (typeof newData !== "object")
       return createError(res, "Stock data not available", 404);
 
+    if (req.updateStockData) req.updateStockData(newData);
     return createResponse(res, newData);
   }
 
-  createResponse(res, req.stockData);
+  createResponse(res, data?.data);
 };
 
-export { getTodayTrades, getBestStockPresets, getRecentAvailableStockData };
+export { getTodayTrades, getRecentAvailableStockData };
