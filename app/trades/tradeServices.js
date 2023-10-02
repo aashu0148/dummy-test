@@ -12,12 +12,16 @@ const getTodayTrades = async (req, res) => {
 };
 
 const getRecentAvailableStockData = async (req, res) => {
+  const allStocks = await stocksSchema.find({});
+  const symbols = allStocks.map((item) => item.symbol);
   const data = req.stockData;
-  if (typeof data?.data !== "object" || !Object.keys(data.data).length) {
-    const allStocks = await stocksSchema.find({});
-    const newData = await getAllStocksData(
-      allStocks.map((item) => item.symbol)
-    );
+
+  if (
+    typeof data?.data !== "object" ||
+    !Object.keys(data.data).length ||
+    Object.keys(data.data).length !== symbols.length
+  ) {
+    const newData = await getAllStocksData(symbols);
 
     if (typeof newData !== "object")
       return createError(res, "Stock data not available", 404);
