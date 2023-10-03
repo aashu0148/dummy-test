@@ -351,16 +351,17 @@ const checkForGoodTrade = async () => {
   for (let i = 0; i < trades.length; ++i) {
     const item = trades[i];
 
-    if (!isAllowedToTakeThisTrade(item)) continue;
-
-    const newTrade = new tradeSchema({
+    const tradeObj = {
       name: item.symbol,
       symbol: item.symbol,
       ...item.trade,
       status: "taken",
       time: item.trade?.time ? item.trade.time * 1000 : Date.now(),
       date: new Date().toLocaleDateString("en-in"),
-    });
+    };
+    if (!isAllowedToTakeThisTrade(tradeObj)) continue;
+
+    const newTrade = new tradeSchema(tradeObj);
 
     notifyEmailsWithTrade({ ...item.trade, symbol: item.symbol });
 
