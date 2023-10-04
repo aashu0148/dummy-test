@@ -101,7 +101,7 @@ export const getAllStocksData = async (symbols = []) => {
 
 const checkTradeCompletion = (
   triggerPrice,
-  prices,
+  priceData,
   target,
   sl,
   isSellTrade = false
@@ -110,18 +110,18 @@ const checkTradeCompletion = (
     !triggerPrice ||
     !target ||
     !sl ||
-    !Array.isArray(prices) ||
-    !prices?.length
+    !Array.isArray(priceData?.c) ||
+    !priceData?.c?.length
   )
     return 0;
 
   for (let i = 0; i < prices.length; ++i) {
-    const price = prices[i];
+    const c = priceData.c[i];
+    const l = priceData.l[i];
+    const h = priceData.h[i];
 
-    if ((isSellTrade && price <= target) || (!isSellTrade && price >= target))
-      return 1;
-    if ((isSellTrade && price >= sl) || (!isSellTrade && price <= sl))
-      return -1;
+    if ((isSellTrade && l < target) || (!isSellTrade && h > target)) return 1;
+    if ((isSellTrade && h >= sl) || (!isSellTrade && l <= sl)) return -1;
   }
 
   return 0;
@@ -145,7 +145,13 @@ const completeTodaysTradesStatus = async (todayTakenTrades = []) => {
 
     const statusNumber = checkTradeCompletion(
       trade.startPrice,
-      data.c.slice(timeIndex),
+      {
+        c: data.c.slice(timeIndex),
+        o: data.o.slice(timeIndex),
+        h: data.h.slice(timeIndex),
+        l: data.l.slice(timeIndex),
+        t: data.t.slice(timeIndex),
+      },
       trade.target,
       trade.sl,
       isSellTrade
