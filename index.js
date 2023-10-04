@@ -247,6 +247,11 @@ const notifyEmailsWithTrade = (trade) => {
 };
 
 const takeTradesAndUpdateStockData = async () => {
+  const currentTimeString = new Date().toLocaleTimeString("en-in", {
+    timeZone: "Asia/Kolkata",
+    hour12: false,
+  });
+
   const allAvailableStocks = await stocksSchema.find({});
   const stockSymbols = allAvailableStocks.map((item) => item.symbol);
 
