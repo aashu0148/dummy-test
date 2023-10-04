@@ -115,7 +115,7 @@ const checkTradeCompletion = (
   )
     return 0;
 
-  for (let i = 0; i < prices.length; ++i) {
+  for (let i = 0; i < priceData.c.length; ++i) {
     const c = priceData.c[i];
     const l = priceData.l[i];
     const h = priceData.h[i];
