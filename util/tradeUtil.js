@@ -509,7 +509,7 @@ export const takeTrades = async (
 
   const checkTradeCompletion = (
     triggerPrice,
-    prices,
+    data = { c: [], l: [], h: [], o: [] },
     target,
     sl,
     isSellTrade = false
@@ -518,18 +518,18 @@ export const takeTrades = async (
       !triggerPrice ||
       !target ||
       !sl ||
-      !Array.isArray(prices) ||
-      !prices?.length
+      !Array.isArray(data?.c) ||
+      !data?.c?.length
     )
       return 0;
 
-    for (let i = 0; i < prices.length; ++i) {
-      const price = prices[i];
+    for (let i = 0; i < data.c.length; ++i) {
+      const c = data.c[i];
+      const l = data.l[i];
+      const h = data.h[i];
 
-      if ((isSellTrade && price <= target) || (!isSellTrade && price >= target))
-        return 1;
-      if ((isSellTrade && price >= sl) || (!isSellTrade && price <= sl))
-        return -1;
+      if ((isSellTrade && l < target) || (!isSellTrade && h > target)) return 1;
+      if ((isSellTrade && h >= sl) || (!isSellTrade && l <= sl)) return -1;
     }
 
     return 0;
@@ -546,7 +546,13 @@ export const takeTrades = async (
 
       const statusNumber = checkTradeCompletion(
         trade.startPrice,
-        priceData.c.slice(tradeStartIndex, currentIndex),
+        {
+          c: priceData.c.slice(tradeStartIndex, currentIndex),
+          o: priceData.o.slice(tradeStartIndex, currentIndex),
+          h: priceData.h.slice(tradeStartIndex, currentIndex),
+          l: priceData.l.slice(tradeStartIndex, currentIndex),
+          t: priceData.t.slice(tradeStartIndex, currentIndex),
+        },
         trade.target,
         trade.sl,
         isSellTrade
