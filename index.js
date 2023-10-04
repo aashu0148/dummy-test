@@ -246,6 +246,62 @@ const notifyEmailsWithTrade = (trade) => {
   console.log("🟢 Mails sent to:", emailsToNotify.join(", "));
 };
 
+const takeTradesAndUpdateStockData = async () => {
+  const allAvailableStocks = await stocksSchema.find({});
+  const stockSymbols = allAvailableStocks.map((item) => item.symbol);
+
+  const data = await getAllStocksData(stockSymbols);
+
+  stockData.data = data;
+  stockData.date = Date.now();
+
+  console.log("⏱️ sending recent stock data", currentTimeString);
+  io.to("trades").emit("stock-data", stockData);
+
+  const todayDate = new Date().toLocaleDateString("en-in");
+  const todaysTakenTrades = await tradeSchema.find({ date: todayDate });
+
+  // updating trade status
+  completeTodaysTradesStatus(todaysTakenTrades);
+
+  return {
+    symbols: stockSymbols,
+    todaysTakenTrades,
+  };
+};
+
+const monitorMarket = async () => {
+  const weekDay = new Date()
+    .toLocaleString("en-in", {
+      timeZone: "Asia/Kolkata",
+      weekday: "short",
+    })
+    .toLowerCase();
+  const currentTimeString = new Date().toLocaleTimeString("en-in", {
+    timeZone: "Asia/Kolkata",
+    hour12: false,
+  });
+  const [hour, min, sec] = currentTimeString
+    .split(":")
+    .map((item) => parseInt(item));
+
+  // returning if not in market hours
+  if (
+    weekDay == "sat" ||
+    weekDay == "sun" ||
+    hour < 9 ||
+    hour > 15 ||
+    (hour == 9 && min < 15) ||
+    (hour == 15 && min > 30)
+  )
+    return;
+
+  // returning because checkGoodTrade will run at this time and it will take care of monitoring market
+  if (min % 5 == 0) return;
+
+  await takeTradesAndUpdateStockData();
+};
+
 const checkForGoodTrade = async () => {
   const weekDay = new Date()
     .toLocaleString("en-in", {
@@ -268,7 +324,7 @@ const checkForGoodTrade = async () => {
     hour < 9 ||
     hour >= 15 ||
     (hour == 9 && min < 30) ||
-    (hour == 14 && min > 30)
+    (hour == 14 && min > 45)
   )
     return;
 
@@ -280,27 +336,10 @@ const checkForGoodTrade = async () => {
   )
     return;
 
-  let latestDataNotPresent = false;
-  if (!stockData.date) latestDataNotPresent = true;
-  else if (new Date(stockData.date) < new Date()) latestDataNotPresent = true;
+  const { symbols: stockSymbols, todaysTakenTrades } =
+    await takeTradesAndUpdateStockData();
 
-  const allAvailableStocks = await stocksSchema.find({});
-  const stockSymbols = allAvailableStocks.map((item) => item.symbol);
-
-  const data = await getAllStocksData(stockSymbols);
-
-  stockData.data = data;
-  stockData.date = Date.now();
-
-  console.log("⏱️ sending recent stock data", currentTimeString);
-  io.to("trades").emit("stock-data", stockData);
-
-  const todayDate = new Date().toLocaleDateString("en-in");
-  const todaysTakenTrades = await tradeSchema.find({ date: todayDate });
   const presets = await presetSchema.find({});
-
-  // updating trade status
-  completeTodaysTradesStatus(todaysTakenTrades);
 
   const allTakenTrades = await Promise.all(
     stockSymbols.map((s) => {
@@ -375,8 +414,27 @@ const checkForGoodTrade = async () => {
   }
 };
 
-// interval for taking trades
-setInterval(checkForGoodTrade, 10 * 1000);
+let starterInterval = setInterval(() => {
+  const currentTimeString = new Date().toLocaleTimeString("en-in", {
+    timeZone: "Asia/Kolkata",
+    hour12: false,
+  });
+  const [hour, min, sec] = currentTimeString
+    .split(":")
+    .map((item) => parseInt(item));
+
+  if (min % 5 == 0 && sec < 4 && sec > 1) {
+    clearInterval(starterInterval);
+
+    checkForGoodTrade();
+    // interval for taking trades
+    setInterval(checkForGoodTrade, 10 * 1000);
+
+    monitorMarket();
+    // interval for monitoring market
+    setInterval(monitorMarket, 60 * 1000);
+  }
+}, 1000);
 
 server.listen(5000, () => {
   console.log("Backend is up at port 5000");
