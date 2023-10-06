@@ -67,7 +67,7 @@ const getStockPastData = async (symbol, to) => {
   if (!to) return null;
   const time = parseInt(new Date(to).getTime() / 1000);
 
-  const url = `https://priceapi.moneycontrol.com/techCharts/indianMarket/stock/history?symbol=${symbol}&resolution=5&to=${time}&countback=4000&currencyCode=INR`;
+  const url = `https://priceapi.moneycontrol.com/techCharts/indianMarket/stock/history?symbol=${symbol}&resolution=5&to=${time}&countback=6000&currencyCode=INR`;
 
   const res = await axios
     .get(url)
@@ -252,7 +252,30 @@ const notifyEmailsWithTrade = (trade) => {
   console.log("🟢 Mails sent to:", emailsToNotify.join(", "));
 };
 
-const takeTradesAndUpdateStockData = async () => {
+const getShortenStockData = () => {
+  const data = stockData.data;
+  if (!data || typeof data !== "object" || !Object.keys(data).length) return {};
+
+  const newData = {};
+
+  for (let s in data) {
+    const val = data[s];
+    if (!val?.c?.length) continue;
+
+    newData[s] = {
+      c: val.c.slice(-500),
+      t: val.t.slice(-500),
+      h: val.h.slice(-500),
+      l: val.l.slice(-500),
+      o: val.o.slice(-500),
+      v: val.v.slice(-500),
+    };
+  }
+
+  return { date: stockData.date, data: newData };
+};
+
+const getTodayTradesAndUpdateStockData = async () => {
   const currentTimeString = new Date().toLocaleTimeString("en-in", {
     timeZone: "Asia/Kolkata",
     hour12: false,
@@ -267,7 +290,7 @@ const takeTradesAndUpdateStockData = async () => {
   stockData.date = Date.now();
 
   console.log("⏱️ sending recent stock data", currentTimeString);
-  io.to("trades").emit("stock-data", stockData);
+  io.to("trades").emit("stock-data", getShortenStockData());
 
   const todayDate = new Date().toLocaleDateString("en-in");
   const todaysTakenTrades = await tradeSchema.find({ date: todayDate });
@@ -310,7 +333,7 @@ const monitorMarket = async () => {
   // returning because checkGoodTrade will run at this time and it will take care of monitoring market
   if (min % 5 == 0) return;
 
-  await takeTradesAndUpdateStockData();
+  await getTodayTradesAndUpdateStockData();
 };
 
 const checkForGoodTrade = async () => {
@@ -348,7 +371,7 @@ const checkForGoodTrade = async () => {
     return;
 
   const { symbols: stockSymbols, todaysTakenTrades } =
-    await takeTradesAndUpdateStockData();
+    await getTodayTradesAndUpdateStockData();
 
   const presets = await presetSchema.find({});
 
