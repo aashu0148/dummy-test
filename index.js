@@ -18,7 +18,7 @@ import stockRoutes from "./app/stocks/stocksRoutes.js";
 import userRoutes from "./app/user/userRoutes.js";
 import { takeTrades } from "./util/tradeUtil.js";
 
-const emailsToNotify = ["aashu.1st@gmail.com", "hariomparasher@gmail.com"];
+const emailsToNotify = ["buildforss@.com", "hariomparasher@gmail.com"];
 const gmailMail = process.env.GMAIL_MAIL;
 const gmailPassword = process.env.GMAIL_PASS;
 const transport = nodemailer.createTransport({
