@@ -353,6 +353,10 @@ export const takeTrades = async (
       vwap: false,
       psar: false,
       br: false,
+      rsi: false,
+      macd: false,
+      bollinger: false,
+      sma: false,
     },
     decisionMakingPoints = 3,
     useSupportResistances = true,
@@ -859,14 +863,29 @@ export const takeTrades = async (
     //       : signalEnum.hold
     //     : signalEnum.hold;
 
-    const initialSignal =
-      signalWeight[srSignal] * indicatorsWeightEnum.sr +
-      signalWeight[rsiSignal] * indicatorsWeightEnum.rsi +
-      signalWeight[bollingerBandSignal] * indicatorsWeightEnum.bollingerBand +
-      signalWeight[macdSignal] * indicatorsWeightEnum.macd +
-      signalWeight[smaSignal] * indicatorsWeightEnum.movingAvg;
+    const initialSignal = signalWeight[srSignal] * indicatorsWeightEnum.sr;
 
     const furtherIndicatorSignals = [];
+    if (additionalIndicators.rsi) {
+      furtherIndicatorSignals.push(
+        signalWeight[rsiSignal] * indicatorsWeightEnum.rsi
+      );
+    }
+    if (additionalIndicators.macd) {
+      furtherIndicatorSignals.push(
+        signalWeight[macdSignal] * indicatorsWeightEnum.macd
+      );
+    }
+    if (additionalIndicators.sma) {
+      furtherIndicatorSignals.push(
+        signalWeight[smaSignal] * indicatorsWeightEnum.sma
+      );
+    }
+    if (additionalIndicators.bollinger) {
+      furtherIndicatorSignals.push(
+        signalWeight[bollingerBandSignal] * indicatorsWeightEnum.bollingerBand
+      );
+    }
     if (additionalIndicators.br) {
       brSignal = getBreakOutDownSignal(i);
 
