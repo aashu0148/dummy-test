@@ -385,9 +385,10 @@ export const takeTrades = async (
     vwapPeriod = 14,
     targetProfitPercent = 1.4,
     stopLossPercent = 0.7,
-    brTotalTrendLength = 24,
-    brLongTrendLength = 15,
-    brShortTrendLength = 7,
+    brTotalTrendLength = 20,
+    brLongTrendLength = 10,
+    brShortTrendLength = 6,
+    avoidingLatestSmallMovePercent = 0.9,
     lastMoreCandleOffset = 40,
     lastFewCandleOffset = 6,
     lastCandlesMultiplier = 3,
@@ -967,6 +968,13 @@ export const takeTrades = async (
         (hour == 14 && min > 30)
       )
         return false;
+
+      if (avoidingLatestSmallMovePercent > 2)
+        avoidingLatestSmallMovePercent = 0.9;
+      const smallMoveLength = (avoidingLatestSmallMovePercent / 100) * price;
+
+      const last3CandlesMove = Math.abs(price - priceData.o[i - 3]);
+      if (last3CandlesMove > smallMoveLength) return false;
 
       return true;
     };
