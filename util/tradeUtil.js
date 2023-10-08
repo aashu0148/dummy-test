@@ -54,7 +54,7 @@ export const indicatorsWeightEnum = {
   williamR: 1,
   mfi: 1,
   vPs: 1,
-  sma: 2,
+  sma: 1.5,
 };
 
 const timesPricesCrossedRange = (prices = [], rangeMin, rangeMax) => {
@@ -361,6 +361,7 @@ export const takeTrades = async (
       sma: false,
     },
     decisionMakingPoints = 3,
+    reverseTheTradingLogic = false,
     useSupportResistances = true,
     vPointOffset = 8,
     rsiLow = 48,
@@ -590,8 +591,9 @@ export const takeTrades = async (
       if (status == trade.status) return;
 
       // update the trade status
-      trades[i].result = status;
       trades[i].status = status;
+
+      if (status !== "taken") trades[i].endIndex = currentIndex;
     });
   };
 
@@ -774,6 +776,40 @@ export const takeTrades = async (
     else return trendEnum.range;
   };
 
+  const getSrSignal = (index, srRanges = []) => {
+    const currClose = priceData.c[index];
+    const currOpen = priceData.o[index];
+
+    const point3OfPrice = (0.3 / 100) * currClose;
+    const isBigCandle = Math.abs(currClose - currOpen) > point3OfPrice;
+
+    const isBigBreakout = srRanges.some(
+      (item) => isBigCandle && item.max < currClose && item.max > currOpen
+    );
+    if (isBigBreakout) return signalEnum.buy;
+
+    const isBigBreakdown = srRanges.some(
+      (item) => isBigCandle && item.min > currClose && item.min < currOpen
+    );
+    if (isBigBreakdown) return signalEnum.sell;
+
+    const prevOpen = priceData.o[index - 1];
+
+    const isNormalBreakout = srRanges.some(
+      (item) =>
+        prevOpen < item.max && currClose > item.max && currOpen > item.max
+    );
+    if (isNormalBreakout) return signalEnum.buy;
+
+    const isNormalBreakdown = srRanges.some(
+      (item) =>
+        prevOpen > item.min && currClose < item.min && currOpen < item.min
+    );
+    if (isNormalBreakdown) return signalEnum.sell;
+
+    return signalEnum.hold;
+  };
+
   for (let i = startTakingTradeIndex; i < priceData.c.length; i++) {
     analyzeAllTradesForCompletion(i);
 
@@ -867,6 +903,9 @@ export const takeTrades = async (
       : isSRBreakdown
       ? signalEnum.sell
       : signalEnum.hold;
+
+    // const srSignal = getSrSignal(i, strongSupportResistances);
+
     const stochasticSignal =
       stochastic[i] < stochasticLow
         ? signalEnum.sell
@@ -1038,14 +1077,6 @@ export const takeTrades = async (
       initialSignalWeight + additionalIndicatorsWeight <=
       -1 * decisionMakingPoint;
 
-    analyticDetails.totalPoints =
-      initialSignalWeight + additionalIndicatorsWeight;
-    analyticDetails.netSignal = isBuySignal
-      ? signalEnum.buy
-      : isSellSignal
-      ? signalEnum.sell
-      : signalEnum.hold;
-
     if (!isBuySignal && !isSellSignal)
       analytics.push({
         ...analyticDetails,
@@ -1082,6 +1113,19 @@ export const takeTrades = async (
 
       return true;
     };
+
+    // if (reverseTheTradingLogic) {
+    //   isBuySignal = !isBuySignal;
+    //   isSellSignal = !isSellSignal;
+    // }
+
+    analyticDetails.totalPoints =
+      initialSignalWeight + additionalIndicatorsWeight;
+    analyticDetails.netSignal = isBuySignal
+      ? signalEnum.buy
+      : isSellSignal
+      ? signalEnum.sell
+      : signalEnum.hold;
 
     if (isBuySignal) {
       let nearestResistance;
