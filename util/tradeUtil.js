@@ -39,10 +39,10 @@ const getDxForPrice = (price, time = timeFrame) => {
 };
 export const indicatorsWeightEnum = {
   bollingerBand: 3,
-  movingAvg: 2,
-  sma: 2,
   sr: 2,
-  macd: 2,
+  movingAvg: 1.5,
+  br: 1.5,
+  macd: 1.5,
   rsi: 1,
   cci: 1,
   trend: 1,
@@ -54,6 +54,7 @@ export const indicatorsWeightEnum = {
   williamR: 1,
   mfi: 1,
   vPs: 1,
+  sma: 2,
 };
 
 const timesPricesCrossedRange = (prices = [], rangeMin, rangeMax) => {
