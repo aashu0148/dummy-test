@@ -18,7 +18,7 @@ import stockRoutes from "./app/stocks/stocksRoutes.js";
 import userRoutes from "./app/user/userRoutes.js";
 import { takeTrades } from "./util/tradeUtil.js";
 
-const emailsToNotify = ["buildforss@.com", "hariomparasher@gmail.com"];
+const emailsToNotify = ["buildforss@gmail.com", "hariomparasher@gmail.com"];
 const gmailMail = process.env.GMAIL_MAIL;
 const gmailPassword = process.env.GMAIL_PASS;
 const transport = nodemailer.createTransport({
@@ -211,12 +211,16 @@ const getMailBodyHTML = ({ symbol, trigger, target, sl, type, time }) => {
 };
 
 const sendMail = async (to, subject, html) => {
-  transport.sendMail({
-    from: gmailMail,
-    to: to,
-    subject,
-    html,
-  });
+  try {
+    transport.sendMail({
+      from: gmailMail,
+      to: to,
+      subject,
+      html,
+    });
+  } catch (err) {
+    console.log("🔴 Error sending mail", err.message);
+  }
 };
 
 const notifyEmailsWithTrade = (trade) => {
