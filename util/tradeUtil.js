@@ -47,7 +47,7 @@ export const indicatorsWeightEnum = {
   cci: 1,
   trend: 1,
   stochastic: 1,
-  psar: 1,
+  psar: 0.5,
   superTrend: 1,
   obv: 1,
   vwap: 1,
