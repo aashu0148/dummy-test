@@ -37,6 +37,7 @@ const stockData = {
   date: "",
   data: {},
 };
+let recentlyFetchedData = {};
 
 app.use(cors());
 app.use(express.json());
@@ -45,17 +46,16 @@ app.use(express.urlencoded({ extended: true }));
 const updateStockData = (newData) => {
   if (typeof newData !== "object" || !Object.keys(newData).length) return;
 
-  stockData.date = Date.now();
-  stockData.data = newData;
+  recentlyFetchedData = newData;
 };
 
 app.use((req, _res, next) => {
-  req.stockData = stockData;
+  req.recentlyFetchedData = recentlyFetchedData;
   req.updateStockData = updateStockData;
   next();
 }, tradeRoutes);
 app.use((req, _res, next) => {
-  req.stockData = stockData;
+  req.recentlyFetchedData = recentlyFetchedData;
   req.updateStockData = updateStockData;
   next();
 }, presetRoutes);
@@ -63,11 +63,11 @@ app.use(stockRoutes);
 app.use(userRoutes);
 app.get("/hi", (_req, res) => res.send("Hello there buddy!"));
 
-const getStockPastData = async (symbol, to) => {
+const getStockPastData = async (symbol, to, resolution = 5) => {
   if (!to) return null;
   const time = parseInt(new Date(to).getTime() / 1000);
 
-  const url = `https://priceapi.moneycontrol.com/techCharts/indianMarket/stock/history?symbol=${symbol}&resolution=5&to=${time}&countback=6000&currencyCode=INR`;
+  const url = `https://priceapi.moneycontrol.com/techCharts/indianMarket/stock/history?symbol=${symbol}&resolution=${resolution}&to=${time}&countback=6000&currencyCode=INR`;
 
   const res = await axios
     .get(url)
@@ -78,14 +78,22 @@ const getStockPastData = async (symbol, to) => {
   return res.data;
 };
 
-export const getAllStocksData = async (symbols = []) => {
-  const responses = await Promise.all(
-    symbols.map((item) => getStockPastData(item, Date.now()))
+export const getAllStocksData = async (
+  symbols = [],
+  timestamp = Date.now(),
+  resolutions = [5]
+) => {
+  const allResolutionResponses = await Promise.all(
+    resolutions.map((r) =>
+      Promise.all(
+        symbols.slice(0, 3).map((item) => getStockPastData(item, timestamp, r))
+      )
+    )
   );
 
   const data = {};
-  symbols.forEach((item, i) => {
-    data[item] = responses[i] || {
+  symbols.forEach((item, index) => {
+    const defaultStockData = {
       s: "no",
       c: [],
       t: [],
@@ -94,6 +102,14 @@ export const getAllStocksData = async (symbols = []) => {
       o: [],
       h: [],
     };
+
+    let obj = {};
+
+    allResolutionResponses.forEach((responses, ri) => {
+      obj[resolutions[ri]] = responses[index] || defaultStockData;
+    });
+
+    data[item] = obj;
   });
 
   return data;
@@ -136,7 +152,7 @@ const completeTodaysTradesStatus = async (todayTakenTrades = []) => {
     const isSellTrade = trade.type.toLowerCase() == "sell";
     const symbol = trade.symbol || trade.name;
 
-    const data = stockData.data[symbol];
+    const data = stockData.data[symbol] ? stockData.data[symbol]["5"] : {};
     if (!data?.c?.length) return;
 
     const tradeTimeInSec = trade.time / 1000;
@@ -263,7 +279,7 @@ const getShortenStockData = () => {
   const newData = {};
 
   for (let s in data) {
-    const val = data[s];
+    const val = data[s] ? data[s]["5"] : {};
     if (!val?.c?.length) continue;
 
     newData[s] = {
@@ -383,8 +399,9 @@ const checkForGoodTrade = async () => {
     stockSymbols.map((s) => {
       const bestPresetForStock =
         presets.find((p) => p.symbol == s)?.preset || {};
+      const priceDataFor5Min = stockData.data[s] ? stockData.data[s]["5"] : {};
 
-      return takeTrades(stockData.data[s], bestPresetForStock || {}, true);
+      return takeTrades(priceDataFor5Min, bestPresetForStock || {}, true);
     })
   );
 

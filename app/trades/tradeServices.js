@@ -14,14 +14,14 @@ const getTodayTrades = async (req, res) => {
 const getRecentAvailableStockData = async (req, res) => {
   const allStocks = await stocksSchema.find({});
   const symbols = allStocks.map((item) => item.symbol);
-  const data = req.stockData;
+  const data = req.recentlyFetchedData;
 
   if (
-    typeof data?.data !== "object" ||
-    !Object.keys(data.data).length ||
-    Object.keys(data.data).length !== symbols.length
+    typeof data !== "object" ||
+    !Object.keys(data).length ||
+    Object.keys(data).length !== symbols.length
   ) {
-    const newData = await getAllStocksData(symbols);
+    const newData = await getAllStocksData(symbols, Date.now(), [5, 15]);
 
     if (typeof newData !== "object")
       return createError(res, "Stock data not available", 404);
@@ -30,7 +30,7 @@ const getRecentAvailableStockData = async (req, res) => {
     return createResponse(res, newData);
   }
 
-  createResponse(res, data?.data);
+  createResponse(res, data);
 };
 
 export { getTodayTrades, getRecentAvailableStockData };
