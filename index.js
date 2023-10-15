@@ -85,9 +85,7 @@ export const getAllStocksData = async (
 ) => {
   const allResolutionResponses = await Promise.all(
     resolutions.map((r) =>
-      Promise.all(
-        symbols.slice(0, 3).map((item) => getStockPastData(item, timestamp, r))
-      )
+      Promise.all(symbols.map((item) => getStockPastData(item, timestamp, r)))
     )
   );
 
