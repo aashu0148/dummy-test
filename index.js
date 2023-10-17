@@ -63,11 +63,23 @@ app.use(stockRoutes);
 app.use(userRoutes);
 app.get("/hi", (_req, res) => res.send("Hello there buddy!"));
 
-const getStockPastData = async (symbol, to, resolution = 5) => {
+const getStockPastData = async (
+  symbol,
+  from = Date.now() - 40 * 24 * 60 * 60 * 1000,
+  to,
+  resolution = 5
+) => {
   if (!to) return null;
-  const time = parseInt(new Date(to).getTime() / 1000);
+  const toTime = parseInt(to / 1000);
+  const fromTime = parseInt(from / 1000);
+  if (toTime - fromTime < 0) return null;
 
-  const url = `https://priceapi.moneycontrol.com/techCharts/indianMarket/stock/history?symbol=${symbol}&resolution=${resolution}&to=${time}&countback=6000&currencyCode=INR`;
+  const countBackDays = (toTime - fromTime) / 60 / 60 / 24;
+  const countBackCandles =
+    parseInt(countBackDays - (29 / 100) * countBackDays) *
+    (resolution == 5 ? 75 : 25);
+
+  const url = `https://priceapi.moneycontrol.com/techCharts/indianMarket/stock/history?symbol=${symbol}&resolution=${resolution}&to=${toTime}&countback=${countBackCandles}&currencyCode=INR`;
 
   const res = await axios
     .get(url)
@@ -80,12 +92,13 @@ const getStockPastData = async (symbol, to, resolution = 5) => {
 
 export const getAllStocksData = async (
   symbols = [],
-  timestamp = Date.now(),
+  from,
+  to = Date.now(),
   resolutions = [5]
 ) => {
   const allResolutionResponses = await Promise.all(
     resolutions.map((r) =>
-      Promise.all(symbols.map((item) => getStockPastData(item, timestamp, r)))
+      Promise.all(symbols.map((item) => getStockPastData(item, from, to, r)))
     )
   );
 
@@ -397,9 +410,8 @@ const checkForGoodTrade = async () => {
     stockSymbols.map((s) => {
       const bestPresetForStock =
         presets.find((p) => p.symbol == s)?.preset || {};
-      const priceDataFor5Min = stockData.data[s] ? stockData.data[s]["5"] : {};
 
-      return takeTrades(priceDataFor5Min, bestPresetForStock || {}, true);
+      return takeTrades(stockData.data[s], bestPresetForStock || {}, true);
     })
   );
 

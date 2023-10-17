@@ -337,14 +337,7 @@ const getSmaCrossedSignal = ({ smaLow = [], smaHigh = [] }) => {
 };
 
 export const takeTrades = async (
-  priceData = {
-    t: [],
-    o: [],
-    c: [],
-    h: [],
-    l: [],
-    v: [],
-  },
+  stockData = {},
   {
     additionalIndicators = {
       willR: false,
@@ -403,6 +396,11 @@ export const takeTrades = async (
   },
   takeOneRecentTrade = false
 ) => {
+  if (!stockData || !stockData["5"]?.c?.length) return;
+
+  let priceData = stockData["5"];
+  let priceData15min = stockData["15"];
+
   if (!priceData.c?.length) return { trades: [], analytics: [] };
 
   if (targetProfitPercent <= 0) targetProfitPercent = 0.1;
