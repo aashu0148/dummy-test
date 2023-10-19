@@ -65,7 +65,7 @@ app.get("/hi", (_req, res) => res.send("Hello there buddy!"));
 
 const getStockPastData = async (
   symbol,
-  from = Date.now() - 40 * 24 * 60 * 60 * 1000,
+  from = Date.now() - 10 * 24 * 60 * 60 * 1000,
   to,
   resolution = 5
 ) => {
@@ -283,29 +283,6 @@ const notifyEmailsWithTrade = (trade) => {
   console.log("🟢 Mails sent to:", emailsToNotify.join(", "));
 };
 
-const getShortenStockData = () => {
-  const data = stockData.data;
-  if (!data || typeof data !== "object" || !Object.keys(data).length) return {};
-
-  const newData = {};
-
-  for (let s in data) {
-    const val = data[s] ? data[s]["5"] : {};
-    if (!val?.c?.length) continue;
-
-    newData[s] = {
-      c: val.c.slice(-500),
-      t: val.t.slice(-500),
-      h: val.h.slice(-500),
-      l: val.l.slice(-500),
-      o: val.o.slice(-500),
-      v: val.v.slice(-500),
-    };
-  }
-
-  return { date: stockData.date, data: newData };
-};
-
 const getTodayTradesAndUpdateStockData = async () => {
   const currentTimeString = new Date().toLocaleTimeString("en-in", {
     timeZone: "Asia/Kolkata",
@@ -321,7 +298,7 @@ const getTodayTradesAndUpdateStockData = async () => {
   stockData.date = Date.now();
 
   console.log("⏱️ sending recent stock data", currentTimeString);
-  io.to("trades").emit("stock-data", getShortenStockData());
+  io.to("trades").emit("stock-data", stockData);
 
   const todayDate = new Date().toLocaleDateString("en-in");
   const todaysTakenTrades = await tradeSchema.find({ date: todayDate });
