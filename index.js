@@ -65,7 +65,7 @@ app.get("/hi", (_req, res) => res.send("Hello there buddy!"));
 
 const getStockPastData = async (
   symbol,
-  from = Date.now() - 10 * 24 * 60 * 60 * 1000,
+  from = Date.now() - 60 * 24 * 60 * 60 * 1000, // it is important to have 30-40 days data so that the algo can make good support and resistances
   to,
   resolution = 5
 ) => {

@@ -11,6 +11,12 @@ const getTodayTrades = async (req, res) => {
   createResponse(res, trades);
 };
 
+const getAllTrades = async (req, res) => {
+  const trades = await tradeSchema.find({});
+
+  createResponse(res, trades);
+};
+
 const getRecentAvailableStockData = async (req, res) => {
   const { timestamp } = req.query;
   const allStocks = await stocksSchema.find({});
@@ -58,4 +64,5 @@ export {
   getTodayTrades,
   getRecentAvailableStockData,
   getStockDataForTimeRange,
+  getAllTrades,
 };
