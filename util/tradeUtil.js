@@ -405,7 +405,8 @@ export const takeTrades = async (
   },
   takeOneRecentTrade = false
 ) => {
-  if (!stockData || !stockData["5"]?.c?.length) return;
+  if (!stockData || !stockData["5"]?.c?.length)
+    return { trades: [], analytics: [] };
   let priceData = stockData["5"];
   let priceData15min = stockData["15"];
   if (!priceData.c?.length) return { trades: [], analytics: [] };
