@@ -1,6 +1,19 @@
 import { createError, createResponse } from "../../util/util.js";
 import presetSchema from "./presetSchema.js";
 
+const runFunc = async (req, res) => {
+  // const update = await presetSchema.updateMany(
+  //   {},
+  //   {
+  //     $set: {
+  //       "preset.additionalIndicators.sr": true,
+  //       "preset.additionalIndicators.sr15min": true,
+  //     },
+  //   }
+  // );
+  // createResponse(res, update);
+};
+
 const getBestPresets = async (req, res) => {
   const presets = await presetSchema.find({});
 
@@ -44,4 +57,4 @@ const createNewPreset = async (req, res) => {
     );
 };
 
-export { getBestPresets, createNewPreset };
+export { getBestPresets, createNewPreset, runFunc };
