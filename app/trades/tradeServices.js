@@ -5,7 +5,7 @@ import tradeSchema from "./tradeSchema.js";
 
 const updateTrade = async (req, res) => {
   const { id: tradeId } = req.params;
-  const { isApproved, target, sl } = req.body;
+  const { isApproved, target, sl, trigger } = req.body;
 
   if (isApproved == undefined || !target || !sl || isNaN(target) || isNaN(sl))
     return createError(
@@ -23,7 +23,7 @@ const updateTrade = async (req, res) => {
 
   await tradeSchema.updateOne(
     { _id: tradeId },
-    { $set: { isApproved, target, sl } }
+    { $set: { isApproved, target, sl, trigger } }
   );
 
   createResponse(res, { message: "update commpleted" });
