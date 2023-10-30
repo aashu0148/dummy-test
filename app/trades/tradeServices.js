@@ -5,12 +5,19 @@ import tradeSchema from "./tradeSchema.js";
 
 const updateTrade = async (req, res) => {
   const { id: tradeId } = req.params;
-  const { isApproved, target, sl, trigger } = req.body;
+  const { isApproved, target, sl, startPrice } = req.body;
 
-  if (isApproved == undefined || !target || !sl || isNaN(target) || isNaN(sl))
+  if (
+    isApproved == undefined ||
+    !startPrice ||
+    !target ||
+    !sl ||
+    isNaN(target) ||
+    isNaN(sl)
+  )
     return createError(
       res,
-      "All fields are required: isApproved, target, sl",
+      "All fields are required: isApproved, startPrice, target, sl",
       400
     );
 
@@ -23,7 +30,7 @@ const updateTrade = async (req, res) => {
 
   await tradeSchema.updateOne(
     { _id: tradeId },
-    { $set: { isApproved, target, sl, trigger } }
+    { $set: { isApproved, target, sl, startPrice } }
   );
 
   createResponse(res, { message: "update commpleted" });
