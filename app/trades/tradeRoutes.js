@@ -6,6 +6,7 @@ import {
   getRecentAvailableStockData,
   getStockDataForTimeRange,
   getTodayTrades,
+  updateTrade,
 } from "./tradeServices.js";
 
 const router = express.Router();
@@ -18,5 +19,6 @@ router.get(
 router.get("/trade/all", authenticateUserMiddleware, getAllTrades);
 router.get("/trade/today", authenticateUserMiddleware, getTodayTrades);
 router.get("/trade/data", authenticateUserMiddleware, getStockDataForTimeRange);
+router.patch("/trade/:id", authenticateUserMiddleware, updateTrade);
 
 export default router;

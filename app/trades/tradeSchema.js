@@ -6,6 +6,9 @@ const schema = new mongoose.Schema(
       type: String,
       require: true,
     },
+    isApproved: {
+      type: Boolean,
+    },
     symbol: {
       type: String,
       require: true,

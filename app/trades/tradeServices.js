@@ -3,6 +3,32 @@ import { createError, createResponse } from "../../util/util.js";
 import stocksSchema from "../stocks/stocksSchema.js";
 import tradeSchema from "./tradeSchema.js";
 
+const updateTrade = async (req, res) => {
+  const { id: tradeId } = req.params;
+  const { isApproved, target, sl } = req.body;
+
+  if (isApproved == undefined || !target || !sl || isNaN(target) || isNaN(sl))
+    return createError(
+      res,
+      "All fields are required: isApproved, target, sl",
+      400
+    );
+
+  const trade = await tradeSchema.findOne({ _id: tradeId });
+  if (!trade) return createError(res, "Trade not present in database", 404);
+
+  const timeDiff = Date.now() - trade.createdAt.getTime();
+  if (timeDiff > 2.5 * 60 * 1000)
+    return createError(res, `Can't update the trade after 2.5 mins`, 400);
+
+  await tradeSchema.updateOne(
+    { _id: tradeId },
+    { $set: { isApproved, target, sl } }
+  );
+
+  createResponse(res, { message: "update commpleted" });
+};
+
 const getTodayTrades = async (req, res) => {
   const date = new Date().toLocaleDateString("en-in");
 
@@ -65,4 +91,5 @@ export {
   getRecentAvailableStockData,
   getStockDataForTimeRange,
   getAllTrades,
+  updateTrade,
 };

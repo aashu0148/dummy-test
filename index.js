@@ -65,7 +65,7 @@ app.get("/hi", (_req, res) => res.send("Hello there buddy!"));
 
 const getStockPastData = async (
   symbol,
-  from = Date.now() - 60 * 24 * 60 * 60 * 1000, // it is important to have 30-40 days data so that the algo can make good support and resistances
+  from = Date.now() - 40 * 24 * 60 * 60 * 1000, // it is important to have 30-40 days data so that the algo can make good support and resistances
   to,
   resolution = 5
 ) => {
@@ -370,8 +370,8 @@ const checkForGoodTrade = async () => {
     weekDay == "sun" ||
     hour < 9 ||
     hour >= 15 ||
-    (hour == 9 && min < 30) ||
-    (hour == 14 && min > 45)
+    (hour == 9 && min < 15) ||
+    (hour == 14 && min > 30)
   )
     return;
 

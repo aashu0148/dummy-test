@@ -13,8 +13,11 @@ const getStockPastData = async (symbol) => {
 
   const time = parseInt(new Date().getTime() / 1000);
 
-  const url = `https://priceapi.moneycontrol.com/techCharts/indianMarket/stock/history?symbol=${symbol}&resolution=5&to=${time}&countback=2000&currencyCode=INR`;
+  const url = `https://priceapi.moneycontrol.com/techCharts/indianMarket/stock/history?symbol=${encodeURIComponent(
+    symbol
+  )}&resolution=5&to=${time}&countback=2000&currencyCode=INR`;
 
+  console.log(url);
   const res = await axios
     .get(url)
     .catch((err) => console.log("🔴 ERROR making req", err.message));
