@@ -25,8 +25,8 @@ const updateTrade = async (req, res) => {
   if (!trade) return createError(res, "Trade not present in database", 404);
 
   const timeDiff = Date.now() - trade.createdAt.getTime();
-  if (timeDiff > 2.5 * 60 * 1000)
-    return createError(res, `Can't update the trade after 2.5 mins`, 400);
+  if (timeDiff > 5 * 60 * 1000)
+    return createError(res, `Can't update the trade after 5 mins`, 400);
 
   await tradeSchema.updateOne(
     { _id: tradeId },
