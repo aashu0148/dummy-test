@@ -424,7 +424,8 @@ const checkForGoodTrade = async () => {
 
   const isAllowedToTakeThisTrade = (trade) => {
     const unfinishedSimilarTrades = Array.from(todaysTakenTrades).filter(
-      (item) => item.status == "taken" && item.symbol == trade.symbol
+      (item) =>
+        item.status == "taken" && item.symbol == trade.symbol && item.isApproved
       // item.type == trade.type &&
     );
 
