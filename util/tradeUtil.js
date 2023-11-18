@@ -719,7 +719,7 @@ export const takeTrades = async (
 
       return item;
     });
-    indicators.trendLines = trendLines((item) => {
+    indicators.trendLines = trendLines.map((item) => {
       if (item.points[0].index < startTakingTradeIndex - 300) {
         item.stillStrong = false;
         item.reason = "old SR";
