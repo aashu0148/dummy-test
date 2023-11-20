@@ -65,7 +65,7 @@ app.get("/hi", (_req, res) => res.send("Hello there buddy!"));
 
 const getStockPastData = async (
   symbol,
-  from = Date.now() - 40 * 24 * 60 * 60 * 1000, // it is important to have 30-40 days data so that the algo can make good support and resistances
+  from = Date.now() - 30 * 24 * 60 * 60 * 1000, // it is important to have 30-40 days data so that the algo can make good support and resistances
   to,
   resolution = 5
 ) => {
@@ -79,7 +79,9 @@ const getStockPastData = async (
     parseInt(countBackDays - (29 / 100) * countBackDays) *
     (resolution == 5 ? 75 : 25);
 
-  const url = `https://priceapi.moneycontrol.com/techCharts/indianMarket/stock/history?symbol=${symbol}&resolution=${resolution}&to=${toTime}&countback=${countBackCandles}&currencyCode=INR`;
+  const url = `https://priceapi.moneycontrol.com/techCharts/indianMarket/stock/history?symbol=${encodeURIComponent(
+    symbol
+  )}&resolution=${resolution}&to=${toTime}&countback=${countBackCandles}&currencyCode=INR`;
 
   const res = await axios
     .get(url)
