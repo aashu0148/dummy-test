@@ -1447,7 +1447,7 @@ export const takeTrades = async (
       let finalSrSignal = srSignal;
       if (finalSrSignal == signalEnum.hold) {
         const srMinus1 = indicators.allSignals[i - 1].srSignal;
-        const srMinus2 = indicators.allSignals[i - 1].srSignal;
+        const srMinus2 = indicators.allSignals[i - 2].srSignal;
 
         if (srMinus1 && srMinus1 !== signalEnum.hold) finalSrSignal = srMinus1;
         else if (srMinus2 && srMinus2 !== signalEnum.hold)
@@ -1464,7 +1464,7 @@ export const takeTrades = async (
     //   let finalSr15minSignal = srSignal15min;
     //   if (finalSr15minSignal == signalEnum.hold) {
     //     const srMinus1 = indicators.allSignals[i - 1].srSignal15min;
-    //     const srMinus2 = indicators.allSignals[i - 1].srSignal15min;
+    //     const srMinus2 = indicators.allSignals[i - 2].srSignal15min;
 
     //     if (srMinus1 && srMinus1 !== signalEnum.hold)
     //       finalSr15minSignal = srMinus1;
@@ -1483,7 +1483,7 @@ export const takeTrades = async (
       let finalTlSignal = tlSignal;
       if (finalTlSignal == signalEnum.hold) {
         const tlMinus1 = indicators.allSignals[i - 1].tlSignal;
-        const tlMinus2 = indicators.allSignals[i - 1].tlSignal;
+        const tlMinus2 = indicators.allSignals[i - 2].tlSignal;
 
         if (tlMinus1 && tlMinus1 !== signalEnum.hold) finalTlSignal = tlMinus1;
         else if (tlMinus2 && tlMinus2 !== signalEnum.hold)
@@ -1506,7 +1506,7 @@ export const takeTrades = async (
       let finalMacdSignal = macdSignal;
       if (finalMacdSignal == signalEnum.hold) {
         const macdMinus1 = indicators.allSignals[i - 1].macdSignal;
-        const macdMinus2 = indicators.allSignals[i - 1].macdSignal;
+        const macdMinus2 = indicators.allSignals[i - 2].macdSignal;
 
         if (macdMinus1 && macdMinus1 !== signalEnum.hold)
           finalMacdSignal = macdMinus1;
@@ -1538,7 +1538,7 @@ export const takeTrades = async (
       let finalBrSignal = brSignal;
       if (finalBrSignal == signalEnum.hold) {
         const brMinus1 = indicators.allSignals[i - 1].brSignal;
-        const brMinus2 = indicators.allSignals[i - 1].brSignal;
+        const brMinus2 = indicators.allSignals[i - 2].brSignal;
 
         if (brMinus1 && brMinus1 !== signalEnum.hold) finalBrSignal = brMinus1;
         else if (brMinus2 && brMinus2 !== signalEnum.hold)
