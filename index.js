@@ -294,12 +294,7 @@ const getTodayTradesAndUpdateStockData = async () => {
   const allAvailableStocks = await stocksSchema.find({});
   const stockSymbols = allAvailableStocks.map((item) => item.symbol);
 
-  const data = await getAllStocksData(
-    stockSymbols,
-    undefined,
-    undefined,
-    [5, 15]
-  );
+  const data = await getAllStocksData(stockSymbols, undefined, undefined, [5]);
 
   stockData.data = data;
   stockData.date = Date.now();

@@ -64,7 +64,7 @@ const getRecentAvailableStockData = async (req, res) => {
     Object.keys(data).length !== symbols.length
   ) {
     const date = isNaN(timestamp) ? Date.now() : timestamp;
-    const newData = await getAllStocksData(symbols, date, [5, 15]);
+    const newData = await getAllStocksData(symbols, date, [5]);
 
     if (typeof newData !== "object")
       return createError(res, "Stock data not available", 404);
@@ -86,7 +86,7 @@ const getStockDataForTimeRange = async (req, res) => {
   const data = req.recentlyFetchedData;
   if (isNaN(to)) return createError(res, "'to' required");
 
-  const newData = await getAllStocksData(symbols, from, to, [5, 15]);
+  const newData = await getAllStocksData(symbols, from, to, [5]);
 
   if (!newData || typeof newData !== "object")
     return createError(res, "Stock data not available", 404);
