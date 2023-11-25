@@ -763,20 +763,21 @@ export const takeTrades = async (
       const low = priceData.l[i];
       const price = priceData.c[i];
       const time = priceData.t[i];
-      const day = new Date(time * 1000).getDate();
 
       indicators.allSignals.push({});
-      if (
-        !indicators.prevDaysStart.length ||
-        indicators.prevDaysStart[indicators.prevDaysStart.length - 1].day !==
-          day
-      )
-        indicators.prevDaysStart.push({
-          index: i,
-          price,
-          day,
-          open: priceData.o[i],
-        });
+
+      // const day = new Date(time * 1000).getDate();
+      // if (
+      //   !indicators.prevDaysStart.length ||
+      //   indicators.prevDaysStart[indicators.prevDaysStart.length - 1].day !==
+      //     day
+      // )
+      //   indicators.prevDaysStart.push({
+      //     index: i,
+      //     price,
+      //     day,
+      //     open: priceData.o[i],
+      //   });
 
       updateIndicatorValues(high, low, price);
     }
@@ -814,8 +815,24 @@ export const takeTrades = async (
   const analyzeAllTradesForCompletion = async (currentIndex) => {
     if (!trades.length || !currentIndex) return;
 
+    const currDay = new Date(priceData.t[currentIndex] * 1000).getDate();
+    const prevDay = new Date(priceData.t[currentIndex - 1] * 1000).getDate();
+
+    if (currDay !== prevDay) {
+      // new day started
+      trades.forEach((trade) => {
+        if (trade.status == "taken") trade.status = "unfinished";
+      });
+      return;
+    }
+
     trades.forEach(async (trade, i) => {
-      if (trade.status == "profit" || trade.status == "loss") return;
+      if (
+        trade.status == "profit" ||
+        trade.status == "loss" ||
+        trade.status == "unfinished"
+      )
+        return;
 
       const isSellTrade = trade.type == signalEnum.sell;
       const tradeStartIndex = trade.startIndex;
@@ -1187,11 +1204,9 @@ export const takeTrades = async (
   for (let i = startTakingTradeIndex; i < priceData.c.length; i++) {
     const priceIntervalLength = 260;
     const startI = i - priceIntervalLength < 0 ? 0 : i - priceIntervalLength;
-    analyzeAllTradesForCompletion(i);
 
     const times = priceData.t.slice(startI, i + 1);
     const prices = priceData.c.slice(startI, i + 1);
-    const opens = priceData.o.slice(startI, i + 1);
     const highs = priceData.h.slice(startI, i + 1);
     const lows = priceData.l.slice(startI, i + 1);
     const vols = priceData.v.slice(startI, i + 1);
@@ -1204,6 +1219,8 @@ export const takeTrades = async (
     const low = lows[effectiveI];
 
     updateIndicatorValues(high, low, price);
+    analyzeAllTradesForCompletion(i);
+
     const ind_vps = getVPoints({
       offset: vPointOffset,
       prices: prices,
@@ -1460,26 +1477,8 @@ export const takeTrades = async (
 
       analyticDetails.allowedIndicatorSignals.sr = finalSrSignal;
     }
-    // if (additionalIndicators.sr15min) {
-    //   let finalSr15minSignal = srSignal15min;
-    //   if (finalSr15minSignal == signalEnum.hold) {
-    //     const srMinus1 = indicators.allSignals[i - 1].srSignal15min;
-    //     const srMinus2 = indicators.allSignals[i - 2].srSignal15min;
-
-    //     if (srMinus1 && srMinus1 !== signalEnum.hold)
-    //       finalSr15minSignal = srMinus1;
-    //     else if (srMinus2 && srMinus2 !== signalEnum.hold)
-    //       finalSr15minSignal = srMinus2;
-    //   }
-
-    //   furtherIndicatorSignals.push(
-    //     signalWeight[finalSr15minSignal] * indicatorsWeightEnum.sr15min
-    //   );
-    //   analyticDetails.allowedIndicatorSignals.sr15min = finalSr15minSignal;
-    // }
     if (additionalIndicators.tl) {
       tlSignal = getTLBreakOutDownSignal(i).signal;
-      // console.log(tlSignal);
       let finalTlSignal = tlSignal;
       if (finalTlSignal == signalEnum.hold) {
         const tlMinus1 = indicators.allSignals[i - 1].tlSignal;
@@ -1643,12 +1642,12 @@ export const takeTrades = async (
       if (
         hour < 9 ||
         hour >= 15 ||
-        (hour == 9 && min < 20) ||
+        (hour == 9 && min < 25) ||
         (hour == 14 && min > 30)
       )
         return false;
 
-      // check is it is not testing the SR
+      // check if it is not testing the SR
 
       // const lastFewDaysPrices = indicators.prevDaysStart.slice(-7);
       // const lastFewDaysMoves = [];
