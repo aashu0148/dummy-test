@@ -1600,7 +1600,7 @@ export const takeTrades = async (
         signalWeight[finalEngulfSignal] * indicatorsWeightEnum.engulf
       );
 
-      analyticDetails.allowedIndicatorSignals.macd = finalEngulfSignal;
+      analyticDetails.allowedIndicatorSignals.engulf = finalEngulfSignal;
     }
     if (additionalIndicators.macd) {
       let finalMacdSignal = macdSignal;
