@@ -12,6 +12,18 @@ const runFunc = async (req, res) => {
   //   }
   // );
   // createResponse(res, update);
+  const allPresets = await presetSchema.find({});
+
+  // allPresets.forEach((preset) => {
+  //   const name = preset.symbol;
+
+  //   if (name.includes("_old")) {
+  //     console.log("delete", name);
+  //     presetSchema.deleteOne({ symbol: name }).exec();
+  //   }
+  // });
+
+  res.status(200).json({ success: true });
 };
 
 const getBestPresets = async (req, res) => {
