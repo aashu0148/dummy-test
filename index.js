@@ -135,6 +135,9 @@ const checkTradeCompletion = (
   sl,
   isSellTrade = false
 ) => {
+  let statusNumber = 0,
+    tradeHigh,
+    tradeLow;
   if (
     !triggerPrice ||
     !target ||
@@ -142,18 +145,40 @@ const checkTradeCompletion = (
     !Array.isArray(priceData?.c) ||
     !priceData?.c?.length
   )
-    return 0;
+    return {
+      statusNumber,
+      tradeHigh,
+      tradeLow,
+    };
 
+  tradeHigh = priceData.h[0];
+  tradeLow = priceData.l[0];
   for (let i = 0; i < priceData.c.length; ++i) {
-    const c = priceData.c[i];
     const l = priceData.l[i];
     const h = priceData.h[i];
 
-    if ((isSellTrade && l < target) || (!isSellTrade && h > target)) return 1;
-    if ((isSellTrade && h >= sl) || (!isSellTrade && l <= sl)) return -1;
+    if (h > tradeHigh) tradeHigh = h;
+    else if (l > tradeLow) tradeLow = l;
+
+    if (
+      statusNumber == 0 &&
+      ((isSellTrade && l < target) || (!isSellTrade && h > target))
+    ) {
+      statusNumber = 1;
+    }
+    if (
+      statusNumber == 0 &&
+      ((isSellTrade && h >= sl) || (!isSellTrade && l <= sl))
+    ) {
+      statusNumber = -1;
+    }
   }
 
-  return 0;
+  return {
+    statusNumber,
+    tradeHigh,
+    tradeLow,
+  };
 };
 
 const completeTodaysTradesStatus = async (todayTakenTrades = []) => {
@@ -162,6 +187,8 @@ const completeTodaysTradesStatus = async (todayTakenTrades = []) => {
   todayTakenTrades.forEach(async (trade) => {
     if (trade.status == "profit" || trade.status == "loss") return;
 
+    const currTradeHigh = trade.tradeHigh || 0;
+    const currTradeLow = trade.tradeLow || 9999999;
     const isSellTrade = trade.type.toLowerCase() == "sell";
     const symbol = trade.symbol || trade.name;
 
@@ -172,7 +199,7 @@ const completeTodaysTradesStatus = async (todayTakenTrades = []) => {
     const timeIndex = data.t.findIndex((t) => t >= tradeTimeInSec);
     if (timeIndex < 0) return;
 
-    const statusNumber = checkTradeCompletion(
+    const { statusNumber, tradeHigh, tradeLow } = checkTradeCompletion(
       trade.startPrice,
       {
         c: data.c.slice(timeIndex),
@@ -188,7 +215,22 @@ const completeTodaysTradesStatus = async (todayTakenTrades = []) => {
 
     const status =
       statusNumber == 1 ? "profit" : statusNumber == -1 ? "loss" : "taken";
-    if (status == trade.status) return;
+    if (status == trade.status) {
+      if (tradeHigh !== currTradeHigh || tradeLow !== currTradeLow) {
+        await tradeSchema.updateOne(
+          { _id: trade._id },
+          {
+            $set: {
+              status,
+              tradeHigh,
+              tradeLow,
+            },
+          }
+        );
+      }
+
+      return;
+    }
 
     // update the trade status
     await tradeSchema.updateOne(
@@ -196,6 +238,8 @@ const completeTodaysTradesStatus = async (todayTakenTrades = []) => {
       {
         $set: {
           status,
+          tradeHigh,
+          tradeLow,
         },
       }
     );
@@ -411,11 +455,7 @@ const checkForGoodTrade = async () => {
   if (!trades.length) {
     io.to("trades").emit("test", allTrades);
 
-    if (!trades.length)
-      console.log(
-        "🟡 no trades to take for now!!",
-        allTrades.map((item) => item.trades?.length)
-      );
+    if (!trades.length) console.log("🟡 no trades to take for now!!");
     return;
   }
 
