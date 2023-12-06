@@ -158,7 +158,7 @@ const checkTradeCompletion = (
     const h = priceData.h[i];
 
     if (h > tradeHigh) tradeHigh = h;
-    else if (l > tradeLow) tradeLow = l;
+    else if (l < tradeLow) tradeLow = l;
 
     if (
       statusNumber == 0 &&
