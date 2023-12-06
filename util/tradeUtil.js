@@ -7,6 +7,7 @@ import {
   Stochastic as technicalIndicatorStochastic,
   PSAR as technicalIndicatorPSAR,
   SuperTrend as technicalIndicatorSuperTrend,
+  ADX as technicalIndicatorAdx,
 } from "@debut/indicators";
 import { IndicatorsNormalized } from "@ixjb94/indicators";
 
@@ -55,6 +56,7 @@ const defaultTradePreset = {
   smaHighPeriod: 150,
   rsiPeriod: 8,
   macdFastPeriod: 14,
+  adxPeriod: 14,
   macdSlowPeriod: 24,
   macdSignalPeriod: 8,
   bollingerBandPeriod: 23,
@@ -591,6 +593,7 @@ export const takeTrades = async (
       stochastic: false,
       vwap: false,
       engulf: false,
+      meStar: false,
       psar: false,
       tl: false,
       br: false,
@@ -606,6 +609,7 @@ export const takeTrades = async (
     rsiLow = 40,
     rsiHigh = 70,
     smaLowPeriod = 18,
+    adxPeriod = 14,
     smaHighPeriod = 150,
     rsiPeriod = 8,
     macdFastPeriod = 14,
@@ -655,6 +659,7 @@ export const takeTrades = async (
     macdSlowPeriod,
     macdSignalPeriod
   );
+  const indicatorAdx = new technicalIndicatorAdx(adxPeriod);
   const indicatorBollingerBands = new technicalIndicatorBollingerBands(
     bollingerBandPeriod,
     bollingerBandStdDev
@@ -894,10 +899,48 @@ export const takeTrades = async (
     else return trendEnum.range;
   };
 
+  const getCandleColor = (index) => {
+    if (!index) return;
+    const open = priceData.o[index];
+    const close = priceData.c[index];
+
+    return close - open > 0 ? "green" : "red";
+  };
+
+  const isPinCandle = (index) => {
+    if (!index) return { isPin: false, isInvertedPin: false };
+    const open = priceData.o[index];
+    const close = priceData.c[index];
+    const high = priceData.h[index];
+    const low = priceData.l[index];
+
+    const totalCandle = high - low;
+    const lowerWick = (open < close ? open : close) - low;
+    const upperWick = high - (open > close ? open : close);
+
+    const lowerWickPercent = (lowerWick / totalCandle) * 100;
+    const upperWickPercent = (upperWick / totalCandle) * 100;
+
+    const isPin = lowerWickPercent >= 50 && upperWickPercent < 20;
+    const isInvertedPin = upperWickPercent >= 50 && lowerWickPercent < 20;
+
+    return {
+      isPin,
+      isInvertedPin,
+      lowerWick,
+      upperWick,
+      upperWickPercent,
+      lowerWickPercent,
+    };
+  };
+
   const getSrSignal = (index, srRanges = []) => {
     const currClose = priceData.c[index];
     const currOpen = priceData.o[index];
+    const prevOpen = priceData.o[index - 1];
+    const currCandleColor = getCandleColor(index);
 
+    const point1OfPrice = ((currClose > 350 ? 0.1 : 0.2) / 100) * currClose;
     const point3OfPrice = ((currClose > 350 ? 0.2 : 0.3) / 100) * currClose;
     const isBigCandle = Math.abs(currClose - currOpen) > point3OfPrice;
 
@@ -911,8 +954,6 @@ export const takeTrades = async (
     );
     if (isBigBreakdown) return signalEnum.sell;
 
-    const prevOpen = priceData.o[index - 1];
-
     const isNormalBreakout = srRanges.some(
       (item) =>
         prevOpen < item.max && currClose > item.max && currOpen > item.max
@@ -925,14 +966,41 @@ export const takeTrades = async (
     );
     if (isNormalBreakdown) return signalEnum.sell;
 
+    const prevLow = priceData.l[index - 1];
+    const prevHigh = priceData.h[index - 1];
+    const pinType = isPinCandle(index - 1);
+    const isPin = pinType.isPin ? true : false;
+    const isInvertedPin = pinType.isInvertedPin ? true : false;
+
+    if (!isPin && !isInvertedPin) return signalEnum.hold;
+
+    const isSupportReversal = srRanges.some(
+      (item) =>
+        isPin &&
+        currCandleColor == "green" &&
+        (item.max > prevLow || prevLow - item.max <= point1OfPrice)
+    );
+    // if (index > 275 && index < 282)
+    //   console.log({
+    //     index,
+    //     isSupportReversal,
+    //     isPin,
+    //     currCandleColor,
+    //     prevLow,
+    //     point1OfPrice,
+    //     srRanges: structuredClone(srRanges),
+    //   });
+    if (isSupportReversal) return signalEnum.buy;
+
+    const isResistanceReversal = srRanges.some(
+      (item) =>
+        isInvertedPin &&
+        currCandleColor == "red" &&
+        (item.min < prevHigh || item.min - prevHigh <= point1OfPrice)
+    );
+    if (isResistanceReversal) return signalEnum.sell;
+
     return signalEnum.hold;
-  };
-
-  const getCandleColor = (index) => {
-    const open = priceData.o[index];
-    const close = priceData.c[index];
-
-    return close - open > 0 ? "green" : "red";
   };
 
   const getTLBreakOutDownSignal = (index) => {
@@ -1106,10 +1174,13 @@ export const takeTrades = async (
     const cci = indicatorCCI.nextValue(high, low, price);
     const macd = indicatorMacd.nextValue(price);
     const bollingerBand = indicatorBollingerBands.nextValue(price);
+    const adx = indicatorAdx.nextValue(high, low, price);
     const stochastic = indicatorStochastic.nextValue(high, low, price).k;
     const psar = indicatorPSAR.nextValue(high, low, price);
     const superTrend = indicatorSuperTrend.nextValue(high, low, price);
     const engulfSignal = getEngulfSignal(index);
+
+    // console.log(adx);
 
     indicators.engulf.push(engulfSignal);
     indicators.smallMA.push(smaL);
@@ -1742,12 +1813,7 @@ export const takeTrades = async (
 
       const [hour, min, sec] = timeStr.split(":").map((item) => parseInt(item));
 
-      if (
-        hour < 9 ||
-        hour >= 15 ||
-        (hour == 9 && min < 25) ||
-        (hour == 14 && min > 30)
-      )
+      if (hour < 9 || hour >= 15 || (hour == 9 && min < 25) || hour >= 14)
         return false;
 
       // check if it is not testing the SR
