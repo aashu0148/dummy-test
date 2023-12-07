@@ -978,24 +978,16 @@ export const takeTrades = async (
       (item) =>
         isPin &&
         currCandleColor == "green" &&
+        currClose > item.max &&
         (item.max > prevLow || prevLow - item.max <= point1OfPrice)
     );
-    // if (index > 275 && index < 282)
-    //   console.log({
-    //     index,
-    //     isSupportReversal,
-    //     isPin,
-    //     currCandleColor,
-    //     prevLow,
-    //     point1OfPrice,
-    //     srRanges: structuredClone(srRanges),
-    //   });
     if (isSupportReversal) return signalEnum.buy;
 
     const isResistanceReversal = srRanges.some(
       (item) =>
         isInvertedPin &&
         currCandleColor == "red" &&
+        currClose < item.min &&
         (item.min < prevHigh || item.min - prevHigh <= point1OfPrice)
     );
     if (isResistanceReversal) return signalEnum.sell;
