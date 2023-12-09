@@ -38,9 +38,14 @@ const updateTrade = async (req, res) => {
 };
 
 const getTodayTrades = async (req, res) => {
-  const date = new Date().toLocaleDateString("en-in");
+  const isYesterday = req.query?.day == "yesterday";
 
-  const trades = await tradeSchema.find({ date });
+  const date = isYesterday
+    ? new Date(Date.now() - 24 * 60 * 60 * 1000)
+    : new Date();
+  const dateStr = date.toLocaleDateString("en-in");
+
+  const trades = await tradeSchema.find({ date: dateStr });
 
   createResponse(res, trades);
 };
