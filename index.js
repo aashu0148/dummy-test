@@ -411,8 +411,8 @@ const checkForGoodTrade = async () => {
     weekDay == "sun" ||
     hour < 9 ||
     hour >= 15 ||
-    (hour == 9 && min < 20) ||
-    hour >= 14
+    (hour == 9 && min < 25) ||
+    (hour >= 14 && min >= 30)
   )
     return;
 

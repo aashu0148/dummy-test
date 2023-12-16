@@ -1,5 +1,5 @@
 import {
-  SMA as technicalIndicatorSMA,
+  EMA as technicalIndicatorSMA,
   RSI as technicalIndicatorRSI,
   MACD as technicalIndicatorMACD,
   BollingerBands as technicalIndicatorBollingerBands,
@@ -32,8 +32,9 @@ export const indicatorEnum = {
   sr: "sr",
   tl: "tl",
   engulf: "enfulf",
-  sma: "sma",
+  ema: "ema",
   br: "br",
+  allStar: "allStar",
   macd: "macd",
   rsi: "rsi",
   cci: "cci",
@@ -50,9 +51,10 @@ export const defaultTradePreset = {
   additionalIndicators: {
     sr: true,
     tl: true,
+    allStar: true,
     engulf: true,
     bollinger: false,
-    sma: true,
+    ema: true,
     willR: false,
     mfi: false,
     cci: false,
@@ -64,14 +66,13 @@ export const defaultTradePreset = {
     macd: true,
     obv: false,
   },
-  useSRsToNeglectTrades: true,
   vPointOffset: 8,
   trendLineVPointOffset: 7,
   adxPeriod: 14,
   rsiLow: 30,
   rsiHigh: 70,
-  smaLowPeriod: 18,
-  smaHighPeriod: 150,
+  emaLowPeriod: 12,
+  emaHighPeriod: 26,
   rsiPeriod: 8,
   macdFastPeriod: 14,
   macdSlowPeriod: 24,
@@ -106,6 +107,7 @@ export const indicatorsWeightEnum = {
   tl: 2,
   engulf: 2,
   sr15min: 2,
+  allStar: 3,
   br: 2,
   macd: 1.5,
   rsi: 1,
@@ -119,7 +121,7 @@ export const indicatorsWeightEnum = {
   williamR: 1,
   mfi: 1,
   vPs: 1,
-  sma: 1.5,
+  ema: 3,
 };
 const timeFrame = 5;
 const getDxForPrice = (price, time = timeFrame) => {
@@ -559,19 +561,19 @@ const getMacdSignal = (macd) => {
   return signal;
 };
 
-const getSmaCrossedSignal = ({ smaLow = [], smaHigh = [] }) => {
+const getSmaCrossedSignal = ({ emaLow = [], emaHigh = [] }) => {
   if (
-    !smaLow?.length ||
-    !smaHigh?.length ||
-    smaLow.length > 3 ||
-    smaHigh.length > 3
+    !emaLow?.length ||
+    !emaHigh?.length ||
+    emaLow.length > 3 ||
+    emaHigh.length > 3
   )
     return signalEnum.hold;
 
   let signal = signalEnum.hold,
     s = 0;
-  for (let i = 0; i < smaLow.length; ++i) {
-    const d = smaLow[i] - smaHigh[i];
+  for (let i = 0; i < emaLow.length; ++i) {
+    const d = emaLow[i] - emaHigh[i];
 
     if (d > 0) {
       if (s == -1) signal = signalEnum.buy;
@@ -603,6 +605,7 @@ export const takeTrades = async (
       willR: false,
       mfi: false,
       sr: false,
+      allStar: false,
       cci: false,
       stochastic: false,
       vwap: false,
@@ -614,17 +617,16 @@ export const takeTrades = async (
       rsi: false,
       macd: false,
       bollinger: false,
-      sma: false,
+      ema: false,
     },
     decisionMakingPoints = 3,
-    useSRsToNeglectTrades = true,
     vPointOffset = 8,
     trendLineVPointOffset = 7,
     rsiLow = 30,
     rsiHigh = 70,
-    smaLowPeriod = 18,
+    emaLowPeriod = 18,
     adxPeriod = 14,
-    smaHighPeriod = 150,
+    emaHighPeriod = 150,
     rsiPeriod = 8,
     macdFastPeriod = 14,
     macdSlowPeriod = 24,
@@ -659,8 +661,8 @@ export const takeTrades = async (
   if (stopLossPercent <= 0) stopLossPercent = 0.1;
 
   // variable definitions
-  const indicatorSmallMA = new technicalIndicatorSMA(smaLowPeriod);
-  const indicatorBigMA = new technicalIndicatorSMA(smaHighPeriod);
+  const indicatorSmallMA = new technicalIndicatorSMA(emaLowPeriod);
+  const indicatorBigMA = new technicalIndicatorSMA(emaHighPeriod);
   const indicatorStochastic = new technicalIndicatorStochastic(
     stochasticPeriod,
     stochasticMA
@@ -913,6 +915,18 @@ export const takeTrades = async (
     const close = priceData.c[index];
 
     return close - open > 0 ? "green" : "red";
+  };
+
+  const isDojiCandle = (index) => {
+    if (!index) return false;
+
+    const currClose = priceData.c[index];
+    const currOpen = priceData.o[index];
+
+    const point05OfPrice = ((currClose > 350 ? 0.06 : 0.04) / 100) * currClose;
+    const isDoji = Math.abs(currClose - currOpen) <= point05OfPrice;
+
+    return isDoji;
   };
 
   const isPinCandle = (index) => {
@@ -1221,8 +1235,8 @@ export const takeTrades = async (
     const low = priceData.l[index];
     const price = priceData.c[index];
 
-    const smaL = indicatorSmallMA.nextValue(price);
-    const smaH = indicatorBigMA.nextValue(price);
+    const emaL = indicatorSmallMA.nextValue(price);
+    const emaH = indicatorBigMA.nextValue(price);
     const rsi = indicatorRsi.nextValue(price);
     const cci = indicatorCCI.nextValue(high, low, price);
     const macd = indicatorMacd.nextValue(price);
@@ -1233,8 +1247,8 @@ export const takeTrades = async (
     const engulfSignal = getEngulfSignal(index);
 
     indicators.engulf.push(engulfSignal);
-    indicators.smallMA.push(smaL);
-    indicators.bigMA.push(smaH);
+    indicators.smallMA.push(emaL);
+    indicators.bigMA.push(emaH);
     indicators.rsi.push(rsi);
     indicators.cci.push(cci);
     indicators.adx.push(adx);
@@ -1336,6 +1350,9 @@ export const takeTrades = async (
     sl,
     isSellTrade = false
   ) => {
+    let statusNumber = 0,
+      tradeHigh,
+      tradeLow;
     if (
       !triggerPrice ||
       !target ||
@@ -1343,18 +1360,36 @@ export const takeTrades = async (
       !Array.isArray(data?.c) ||
       !data?.c?.length
     )
-      return 0;
+      return {
+        statusNumber,
+        tradeHigh,
+        tradeLow,
+      };
 
+    tradeHigh = data.h[0];
+    tradeLow = data.l[0];
     for (let i = 0; i < data.c.length; ++i) {
-      const c = data.c[i];
       const l = data.l[i];
       const h = data.h[i];
 
-      if ((isSellTrade && l < target) || (!isSellTrade && h > target)) return 1;
-      if ((isSellTrade && h >= sl) || (!isSellTrade && l <= sl)) return -1;
+      if (h > tradeHigh) tradeHigh = h;
+      else if (l < tradeLow) tradeLow = l;
+
+      if (
+        statusNumber == 0 &&
+        ((isSellTrade && l < target) || (!isSellTrade && h > target))
+      ) {
+        statusNumber = 1;
+      }
+      if (
+        statusNumber == 0 &&
+        ((isSellTrade && h >= sl) || (!isSellTrade && l <= sl))
+      ) {
+        statusNumber = -1;
+      }
     }
 
-    return 0;
+    return { statusNumber, tradeHigh, tradeLow };
   };
 
   const analyzeAllTradesForCompletion = async (currentIndex) => {
@@ -1382,7 +1417,7 @@ export const takeTrades = async (
       const isSellTrade = trade.type == signalEnum.sell;
       const tradeStartIndex = trade.startIndex;
 
-      const statusNumber = checkTradeCompletion(
+      const { statusNumber, tradeHigh, tradeLow } = checkTradeCompletion(
         trade.startPrice,
         {
           c: priceData.c.slice(tradeStartIndex, currentIndex),
@@ -1398,6 +1433,10 @@ export const takeTrades = async (
 
       const status =
         statusNumber == 1 ? "profit" : statusNumber == -1 ? "loss" : "taken";
+
+      trades[i].tradeHigh = tradeHigh;
+      trades[i].tradeLow = tradeLow;
+
       if (status == trade.status) return;
 
       // update the trade status
@@ -1408,7 +1447,7 @@ export const takeTrades = async (
   };
 
   for (let i = startTakingTradeIndex; i < priceData.c.length; i++) {
-    const priceIntervalLength = 260;
+    const priceIntervalLength = 180;
     const startI = i - priceIntervalLength < 0 ? 0 : i - priceIntervalLength;
 
     const times = priceData.t.slice(startI, i + 1);
@@ -1452,7 +1491,7 @@ export const takeTrades = async (
 
       const lastFewRanges = ind_ranges.slice(-5);
       const lastStoredRangesIndex =
-        indicators.ranges[indicators.ranges.length - 1]?.start?.index;
+        indicators.ranges[indicators.ranges.length - 1]?.start?.index || 0;
       let isNewRangeFound =
         lastFewRanges?.length &&
         (!lastStoredRangesIndex ||
@@ -1490,7 +1529,7 @@ export const takeTrades = async (
       const lastFewTLs = ind_t_lines.slice(-7);
       const lastStoredTLStartIndex = indicators.trendLines.length
         ? indicators.trendLines[indicators.trendLines.length - 1]?.points[0]
-            ?.index
+            ?.index || 0
         : 0;
       let isNewTLFound =
         lastFewTLs?.length &&
@@ -1609,9 +1648,9 @@ export const takeTrades = async (
         ? signalEnum.sell
         : signalEnum.hold;
     const macdSignal = getMacdSignal(MACD.slice(i - 2, i + 1));
-    const smaSignal = getSmaCrossedSignal({
-      smaLow: smallMA.slice(i - 2, i + 1),
-      smaHigh: bigMA.slice(i - 2, i + 1),
+    const emaSignal = getSmaCrossedSignal({
+      emaLow: smallMA.slice(i - 2, i + 1),
+      emaHigh: bigMA.slice(i - 2, i + 1),
     });
     // const trendSignal =
     //   trend == trendEnum.down
@@ -1638,24 +1677,57 @@ export const takeTrades = async (
     // const lastFewCandleDiff = prices[i] - prices[i - lastFewCandleOffset];
     // const lastFewCandlePercent = (lastFewCandleDiff / price) * 100;
 
-    const getNetSignalConsideringPrevSignals = (indicatorName, currSignal) => {
+    const getNetSignalConsideringPrevSignals = (
+      indicatorName,
+      currSignal,
+      includeLast3 = false
+    ) => {
       let finalSignal = currSignal;
 
       if (finalSignal == signalEnum.hold) {
         const signalMinus1 = indicators.allSignals[i - 1][indicatorName];
         const signalMinus2 = indicators.allSignals[i - 2][indicatorName];
+        let signalMinus3;
+        if (includeLast3)
+          signalMinus3 = indicators.allSignals[i - 3][indicatorName];
 
         if (signalMinus1 && signalMinus1 !== signalEnum.hold)
           finalSignal = signalMinus1;
         else if (signalMinus2 && signalMinus2 !== signalEnum.hold)
           finalSignal = signalMinus2;
+        else if (signalMinus3 && signalMinus3 !== signalEnum.hold)
+          finalSignal = signalMinus3;
       }
 
       return finalSignal;
     };
 
-    const initialSignalWeight = 0;
+    const getAllStarSignal = () => {
+      const signals = [
+        getNetSignalConsideringPrevSignals(
+          indicatorEnum.macd,
+          macdSignal,
+          true
+        ),
+        getNetSignalConsideringPrevSignals(indicatorEnum.vwap, vwapSignal),
+        getNetSignalConsideringPrevSignals(indicatorEnum.psar, psarSignal),
+        getNetSignalConsideringPrevSignals(indicatorEnum.ema, emaSignal, true),
+      ];
 
+      let buyCount = 0,
+        sellCount = 0;
+      signals.forEach((item) => {
+        if (item == signalEnum.buy) buyCount++;
+        else if (item == signalEnum.sell) sellCount++;
+      });
+
+      if (buyCount >= signals.length - 1) return signalEnum.buy;
+      if (sellCount >= signals.length - 1) return signalEnum.sell;
+      return signalEnum.hold;
+    };
+    const allStarSignal = getAllStarSignal();
+
+    const initialSignalWeight = 0;
     const furtherIndicatorSignals = [];
 
     const calculateFurtherIndicatorsSignals = () => {
@@ -1665,9 +1737,11 @@ export const takeTrades = async (
           srSignal
         );
 
-        furtherIndicatorSignals.push(
-          signalWeight[finalSrSignal] * indicatorsWeightEnum.sr
-        );
+        furtherIndicatorSignals.push({
+          name: indicatorEnum.sr,
+          signal: finalSrSignal,
+          weight: signalWeight[finalSrSignal] * indicatorsWeightEnum.sr,
+        });
 
         analyticDetails.allowedIndicatorSignals.sr = finalSrSignal;
       }
@@ -1678,15 +1752,20 @@ export const takeTrades = async (
           tlSignal
         );
 
-        furtherIndicatorSignals.push(
-          signalWeight[finalTlSignal] * indicatorsWeightEnum.tl
-        );
+        furtherIndicatorSignals.push({
+          name: indicatorEnum.tl,
+          signal: finalTlSignal,
+          weight: signalWeight[finalTlSignal] * indicatorsWeightEnum.tl,
+        });
+
         analyticDetails.allowedIndicatorSignals.tl = finalTlSignal;
       }
       if (additionalIndicators.rsi) {
-        furtherIndicatorSignals.push(
-          signalWeight[rsiSignal] * indicatorsWeightEnum.rsi
-        );
+        furtherIndicatorSignals.push({
+          name: indicatorEnum.rsi,
+          signal: rsiSignal,
+          weight: signalWeight[rsiSignal] * indicatorsWeightEnum.rsi,
+        });
 
         analyticDetails.allowedIndicatorSignals.rsi = rsiSignal;
       }
@@ -1696,34 +1775,56 @@ export const takeTrades = async (
           engulfSignal
         );
 
-        furtherIndicatorSignals.push(
-          signalWeight[finalEngulfSignal] * indicatorsWeightEnum.engulf
-        );
+        furtherIndicatorSignals.push({
+          name: indicatorEnum.engulf,
+          signal: finalEngulfSignal,
+          weight: signalWeight[finalEngulfSignal] * indicatorsWeightEnum.engulf,
+        });
 
         analyticDetails.allowedIndicatorSignals.engulf = finalEngulfSignal;
       }
       if (additionalIndicators.macd) {
         let finalMacdSignal = getNetSignalConsideringPrevSignals(
           indicatorEnum.macd,
-          macdSignal
+          macdSignal,
+          true
         );
 
-        furtherIndicatorSignals.push(
-          signalWeight[finalMacdSignal] * indicatorsWeightEnum.macd
-        );
+        furtherIndicatorSignals.push({
+          name: indicatorEnum.macd,
+          signal: finalMacdSignal,
+          weight: signalWeight[finalMacdSignal] * indicatorsWeightEnum.macd,
+        });
 
         analyticDetails.allowedIndicatorSignals.macd = finalMacdSignal;
       }
-      if (additionalIndicators.sma) {
-        furtherIndicatorSignals.push(
-          signalWeight[smaSignal] * indicatorsWeightEnum.sma
-        );
-        analyticDetails.allowedIndicatorSignals.sma = smaSignal;
+      if (additionalIndicators.allStar) {
+        furtherIndicatorSignals.push({
+          name: indicatorEnum.allStar,
+          signal: allStarSignal,
+          weight: signalWeight[allStarSignal] * indicatorsWeightEnum.allStar,
+        });
+
+        analyticDetails.allowedIndicatorSignals.allStar = allStarSignal;
+      }
+      if (additionalIndicators.ema) {
+        furtherIndicatorSignals.push({
+          name: indicatorEnum.ema,
+          signal: emaSignal,
+          weight: signalWeight[emaSignal] * indicatorsWeightEnum.ema,
+        });
+
+        analyticDetails.allowedIndicatorSignals.ema = emaSignal;
       }
       if (additionalIndicators.bollinger) {
-        furtherIndicatorSignals.push(
-          signalWeight[bollingerBandSignal] * indicatorsWeightEnum.bollingerBand
-        );
+        furtherIndicatorSignals.push({
+          name: indicatorEnum.bollingerBand,
+          signal: bollingerBandSignal,
+          weight:
+            signalWeight[bollingerBandSignal] *
+            indicatorsWeightEnum.bollingerBand,
+        });
+
         analyticDetails.allowedIndicatorSignals.bollinger = bollingerBandSignal;
       }
       if (additionalIndicators.br) {
@@ -1734,27 +1835,40 @@ export const takeTrades = async (
           brSignal
         );
 
-        furtherIndicatorSignals.push(
-          signalWeight[finalBrSignal] * indicatorsWeightEnum.br
-        );
+        furtherIndicatorSignals.push({
+          name: indicatorEnum.br,
+          signal: finalBrSignal,
+          weight: signalWeight[finalBrSignal] * indicatorsWeightEnum.br,
+        });
+
         analyticDetails.allowedIndicatorSignals.br = finalBrSignal;
       }
       if (additionalIndicators.cci) {
-        furtherIndicatorSignals.push(
-          signalWeight[cciSignal] * indicatorsWeightEnum.cci
-        );
+        furtherIndicatorSignals.push({
+          name: indicatorEnum.cci,
+          signal: cciSignal,
+          weight: signalWeight[cciSignal] * indicatorsWeightEnum.cci,
+        });
+
         analyticDetails.allowedIndicatorSignals.cci = cciSignal;
       }
       if (additionalIndicators.mfi) {
-        furtherIndicatorSignals.push(
-          signalWeight[mfiSignal] * indicatorsWeightEnum.mfi
-        );
+        furtherIndicatorSignals.push({
+          name: indicatorEnum.mfi,
+          signal: mfiSignal,
+          weight: signalWeight[mfiSignal] * indicatorsWeightEnum.mfi,
+        });
+
         analyticDetails.allowedIndicatorSignals.mfi = mfiSignal;
       }
       if (additionalIndicators.stochastic) {
-        furtherIndicatorSignals.push(
-          signalWeight[stochasticSignal] * indicatorsWeightEnum.stochastic
-        );
+        furtherIndicatorSignals.push({
+          name: indicatorEnum.stochastic,
+          signal: stochasticSignal,
+          weight:
+            signalWeight[stochasticSignal] * indicatorsWeightEnum.stochastic,
+        });
+
         analyticDetails.allowedIndicatorSignals.stochastic = stochasticSignal;
       }
       if (additionalIndicators.vwap) {
@@ -1763,9 +1877,12 @@ export const takeTrades = async (
           vwapSignal
         );
 
-        furtherIndicatorSignals.push(
-          signalWeight[finalSignal] * indicatorsWeightEnum.vwap
-        );
+        furtherIndicatorSignals.push({
+          name: indicatorEnum.vwap,
+          signal: finalSignal,
+          weight: signalWeight[finalSignal] * indicatorsWeightEnum.vwap,
+        });
+
         analyticDetails.allowedIndicatorSignals.vwap = finalSignal;
       }
       if (additionalIndicators.psar) {
@@ -1774,9 +1891,12 @@ export const takeTrades = async (
           psarSignal
         );
 
-        furtherIndicatorSignals.push(
-          signalWeight[finalSignal] * indicatorsWeightEnum.psar
-        );
+        furtherIndicatorSignals.push({
+          name: indicatorEnum.psar,
+          signal: finalSignal,
+          weight: signalWeight[finalSignal] * indicatorsWeightEnum.psar,
+        });
+
         analyticDetails.allowedIndicatorSignals.psar = finalSignal;
       }
       // if (additionalIndicators.trend) {
@@ -1786,33 +1906,22 @@ export const takeTrades = async (
       //   analyticDetails.allowedIndicatorSignals.trend = trendSignal;
       // }
       if (additionalIndicators.willR) {
-        furtherIndicatorSignals.push(
-          signalWeight[willRSignal] * indicatorsWeightEnum.williamR
-        );
+        furtherIndicatorSignals.push({
+          name: indicatorEnum.williamR,
+          signal: willRSignal,
+          weight: signalWeight[willRSignal] * indicatorsWeightEnum.williamR,
+        });
+
         analyticDetails.allowedIndicatorSignals.willR = willRSignal;
       }
-
-      indicators.allSignals.push({
-        [indicatorEnum.sr]: srSignal,
-        [indicatorEnum.macd]: macdSignal,
-        [indicatorEnum.rsi]: rsiSignal,
-        [indicatorEnum.tl]: tlSignal,
-        [indicatorEnum.br]: brSignal,
-        [indicatorEnum.engulf]: engulfSignal,
-        tlFull: getTLBreakOutDownSignal(i),
-        // brFull: getBreakOutDownSignal(i),
-        [indicatorEnum.cci]: cciSignal,
-        [indicatorEnum.mfi]: mfiSignal,
-        [indicatorEnum.sma]: smaSignal,
-        [indicatorEnum.psar]: psarSignal,
-        [indicatorEnum.vwap]: vwapSignal,
-        [indicatorEnum.williamR]: willRSignal,
-      });
     };
     calculateFurtherIndicatorsSignals();
 
     const additionalIndicatorsWeight =
-      furtherIndicatorSignals.reduce((acc, curr) => curr + acc || 0, 0) || 0;
+      furtherIndicatorSignals.reduce(
+        (acc, curr) => (curr.weight || 0) + acc,
+        0
+      ) || 0;
 
     const decisionMakingPoint = decisionMakingPoints || 3;
 
@@ -1822,10 +1931,33 @@ export const takeTrades = async (
       initialSignalWeight + additionalIndicatorsWeight <=
       -1 * decisionMakingPoint;
 
-    if (!isBuySignal && !isSellSignal)
+    indicators.allSignals.push({
+      [indicatorEnum.sr]: srSignal,
+      [indicatorEnum.macd]: macdSignal,
+      [indicatorEnum.rsi]: rsiSignal,
+      [indicatorEnum.tl]: tlSignal,
+      [indicatorEnum.br]: brSignal,
+      [indicatorEnum.allStar]: allStarSignal,
+      [indicatorEnum.engulf]: engulfSignal,
+      tlFull: getTLBreakOutDownSignal(i),
+      // brFull: getBreakOutDownSignal(i),
+      [indicatorEnum.cci]: cciSignal,
+      [indicatorEnum.mfi]: mfiSignal,
+      [indicatorEnum.ema]: emaSignal,
+      [indicatorEnum.psar]: psarSignal,
+      [indicatorEnum.vwap]: vwapSignal,
+      [indicatorEnum.williamR]: willRSignal,
+      furtherIndicatorSignals,
+      isBuySignal,
+      isSellSignal,
+    });
+
+    if (!isBuySignal && !isSellSignal) {
       analytics.push({
         ...analyticDetails,
       });
+      continue;
+    }
 
     const isAllowedToTakeThisTrade = (trade) => {
       const existingSimilarTrades = trades.filter(
@@ -1841,7 +1973,12 @@ export const takeTrades = async (
 
       const [hour, min, sec] = timeStr.split(":").map((item) => parseInt(item));
 
-      if (hour < 9 || hour >= 15 || (hour == 9 && min <= 25) || hour >= 14)
+      if (
+        hour < 9 ||
+        hour >= 15 ||
+        (hour == 9 && min <= 25) ||
+        (hour >= 14 && min >= 30)
+      )
         return false;
 
       // check if it is not testing the SR
@@ -1864,6 +2001,7 @@ export const takeTrades = async (
       const lastCandleColors = {
         color: "",
         allEqual: true,
+        isAnyDoji: false,
       };
       for (let c = 0; c < 4; ++c) {
         const color = getCandleColor(i - c);
@@ -1871,8 +2009,12 @@ export const takeTrades = async (
         if (!lastCandleColors.color) lastCandleColors.color = color;
         else if (color !== lastCandleColors.color)
           lastCandleColors.allEqual = false;
+
+        if (!lastCandleColors.isAnyDoji && isDojiCandle(i - c))
+          lastCandleColors.isAnyDoji = true;
       }
-      if (lastCandleColors.allEqual) {
+
+      if (lastCandleColors.allEqual && !lastCandleColors.isAnyDoji) {
         if (lastCandleColors.color == "red" && trade.type == "sell")
           return false;
         if (lastCandleColors.color == "green" && trade.type == "buy")
@@ -1889,11 +2031,6 @@ export const takeTrades = async (
       return true;
     };
 
-    // if (reverseTheTradingLogic) {
-    //   isBuySignal = !isBuySignal;
-    //   isSellSignal = !isSellSignal;
-    // }
-
     analyticDetails.netSignal = isBuySignal
       ? signalEnum.buy
       : isSellSignal
@@ -1903,96 +2040,22 @@ export const takeTrades = async (
     analyticDetails.furtherIndicatorSignals = furtherIndicatorSignals;
     analyticDetails.initialSignalWeight = initialSignalWeight;
     analyticDetails.additionalIndicatorsWeight = additionalIndicatorsWeight;
+    analytics.push({
+      ...analyticDetails,
+    });
 
-    if (isBuySignal) {
-      let nearestResistance;
-      for (let j = 0; j < strongSupportResistances.length; ++j) {
-        const range = strongSupportResistances[j];
-        if (range.max < price) continue;
+    const trade = {
+      time: priceData.t[i],
+      startIndex: i,
+      startPrice: price,
+      type: isBuySignal ? signalEnum.buy : signalEnum.sell,
+      target: isBuySignal ? price + targetProfit : price - targetProfit,
+      sl: isBuySignal ? price - stopLoss : price + stopLoss,
+      analytics: analyticDetails,
+      status: "taken",
+    };
 
-        // if price is in between a range
-        if (range.min < price) {
-          nearestResistance = range.max;
-          break;
-        }
-
-        if (!nearestResistance) nearestResistance = range.min;
-
-        if (range.min < nearestResistance) nearestResistance = range.min;
-      }
-
-      const possibleProfit = nearestResistance
-        ? nearestResistance - price
-        : targetProfit;
-
-      // updating analyticDetails
-      analyticDetails.nearestResistance = nearestResistance;
-      analyticDetails.possibleProfit = possibleProfit;
-      analyticDetails.targetProfit = targetProfit;
-      analytics.push({
-        ...analyticDetails,
-      });
-
-      if (possibleProfit < targetProfit && useSRsToNeglectTrades) continue;
-
-      const trade = {
-        time: priceData.t[i],
-        startIndex: i,
-        startPrice: price,
-        type: signalEnum.buy,
-        target: price + targetProfit,
-        sl: price - stopLoss,
-        analytics: analyticDetails,
-        nearestResistance,
-        status: "taken",
-      };
-
-      if (isAllowedToTakeThisTrade(trade)) trades.push(trade);
-    } else if (isSellSignal) {
-      let nearestSupport;
-      for (let j = 0; j < strongSupportResistances.length; ++j) {
-        const range = strongSupportResistances[j];
-        if (range.min > price) continue;
-
-        // if price is in between a range
-        if (range.max > price) {
-          nearestSupport = range.min;
-          break;
-        }
-
-        if (!nearestSupport) nearestSupport = range.max;
-
-        if (range.max < nearestSupport) nearestSupport = range.max;
-      }
-
-      const possibleProfit = nearestSupport
-        ? price - nearestSupport
-        : targetProfit;
-
-      // updating analyticDetails
-      analyticDetails.nearestSupport = nearestSupport;
-      analyticDetails.possibleProfit = possibleProfit;
-      analyticDetails.targetProfit = targetProfit;
-      analytics.push({
-        ...analyticDetails,
-      });
-
-      if (possibleProfit < targetProfit && useSRsToNeglectTrades) continue;
-
-      const trade = {
-        time: priceData.t[i],
-        startIndex: i,
-        startPrice: price,
-        type: signalEnum.sell,
-        target: price - targetProfit,
-        sl: price + stopLoss,
-        analytics: analyticDetails,
-        nearestSupport,
-        status: "taken",
-      };
-
-      if (isAllowedToTakeThisTrade(trade)) trades.push(trade);
-    }
+    if (isAllowedToTakeThisTrade(trade)) trades.push(trade);
   }
 
   return { trades, analytics, indicators, preset };
