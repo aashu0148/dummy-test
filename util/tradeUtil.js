@@ -74,9 +74,9 @@ export const defaultTradePreset = {
   emaLowPeriod: 12,
   emaHighPeriod: 26,
   rsiPeriod: 8,
-  macdFastPeriod: 14,
-  macdSlowPeriod: 24,
-  macdSignalPeriod: 8,
+  macdFastPeriod: 12,
+  macdSlowPeriod: 26,
+  macdSignalPeriod: 9,
   bollingerBandPeriod: 20,
   bollingerBandStdDev: 2,
   cciPeriod: 20,
@@ -107,7 +107,7 @@ export const indicatorsWeightEnum = {
   tl: 2,
   engulf: 2,
   sr15min: 2,
-  allStar: 3,
+  allStar: 1,
   br: 2,
   macd: 1.5,
   rsi: 1,
@@ -628,9 +628,9 @@ export const takeTrades = async (
     adxPeriod = 14,
     emaHighPeriod = 150,
     rsiPeriod = 8,
-    macdFastPeriod = 14,
-    macdSlowPeriod = 24,
-    macdSignalPeriod = 8,
+    macdFastPeriod = 12,
+    macdSlowPeriod = 26,
+    macdSignalPeriod = 9,
     bollingerBandPeriod = 20,
     bollingerBandStdDev = 2,
     cciPeriod = 20,
@@ -1665,6 +1665,7 @@ export const takeTrades = async (
         ? signalEnum.buy
         : signalEnum.hold;
     const psarSignal = getPsarSignal(i);
+    const isSideways = isStockSideways(i);
 
     let brSignal, tlSignal;
 
@@ -1917,11 +1918,15 @@ export const takeTrades = async (
     };
     calculateFurtherIndicatorsSignals();
 
-    const additionalIndicatorsWeight =
+    let additionalIndicatorsWeight =
       furtherIndicatorSignals.reduce(
         (acc, curr) => (curr.weight || 0) + acc,
         0
       ) || 0;
+    if (isSideways) {
+      if (additionalIndicatorsWeight < 0) additionalIndicatorsWeight++;
+      else if (additionalIndicatorsWeight > 0) additionalIndicatorsWeight--;
+    }
 
     const decisionMakingPoint = decisionMakingPoints || 3;
 
@@ -1950,6 +1955,7 @@ export const takeTrades = async (
       furtherIndicatorSignals,
       isBuySignal,
       isSellSignal,
+      isSideways,
     });
 
     if (!isBuySignal && !isSellSignal) {
