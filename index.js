@@ -185,15 +185,58 @@ const completeTodaysTradesStatus = async (todayTakenTrades = []) => {
   if (!todayTakenTrades.length) return;
 
   todayTakenTrades.forEach(async (trade) => {
-    if (trade.status == "profit" || trade.status == "loss") return;
+    if (
+      trade.status == "profit" ||
+      trade.status == "loss" ||
+      trade.status == "cancelled" ||
+      trade.status == "unfinished"
+    )
+      return;
+
+    const data = stockData.data[symbol] ? stockData.data[symbol]["5"] : {};
+    if (!data?.c?.length) return;
+
+    let currIndex = data.c.length - 1;
+    if (trade.status == "limit") {
+      const startIndex = data.t.findIndex((t) => t >= trade.limitTime / 1000);
+      const updateObject = {};
+      if (currIndex - startIndex > 10) {
+        updateObject.status = "cancelled";
+        await tradeSchema.updateOne(
+          { _id: trade._id },
+          {
+            $set: updateObject,
+          }
+        );
+        return;
+      }
+
+      const prices = {
+        high: stockData.h[currIndex],
+        low: stockData.l[currIndex],
+      };
+
+      if (trade.startPrice > prices.low && trade.startPrice < prices.high) {
+        updateObject.status = "taken";
+        updateObject.time = stockData.t[currIndex]
+          ? stockData.t[currIndex] * 1000
+          : Date.now();
+
+        await tradeSchema.updateOne(
+          { _id: trade._id },
+          {
+            $set: updateObject,
+          }
+        );
+      }
+
+      return;
+    }
 
     const currTradeHigh = trade.tradeHigh || 0;
     const currTradeLow = trade.tradeLow || 9999999;
     const isSellTrade = trade.type.toLowerCase() == "sell";
     const symbol = trade.symbol || trade.name;
-
-    const data = stockData.data[symbol] ? stockData.data[symbol]["5"] : {};
-    if (!data?.c?.length) return;
 
     const tradeTimeInSec = trade.time / 1000;
     const timeIndex = data.t.findIndex((t) => t >= tradeTimeInSec);
@@ -462,10 +505,12 @@ const checkForGoodTrade = async () => {
   const isAllowedToTakeThisTrade = (trade) => {
     const unfinishedSimilarTrades = Array.from(todaysTakenTrades).filter(
       (item) =>
-        item.status == "taken" &&
-        item.symbol == trade.symbol &&
-        (item.isApproved == true || item.isApproved == undefined)
-      // item.type == trade.type &&
+        (item.status == "taken" &&
+          item.symbol == trade.symbol &&
+          (item.isApproved == true || item.isApproved == undefined)) ||
+        (item.symbol == trade.symbol &&
+          item.status == "limit" &&
+          item.type == trade.type)
     );
 
     return unfinishedSimilarTrades.length > 0 ? false : true;
@@ -475,6 +520,23 @@ const checkForGoodTrade = async () => {
   for (let i = 0; i < trades.length; ++i) {
     const item = trades[i];
 
+    const sData = stockData.data[item.symbol]["5"];
+    const lastIndex = sData.c.length - 1;
+    if (lastIndex < 0) {
+      console.log("weirdly stock data not found for", item.symbol);
+      continue;
+    }
+    const prices = {
+      high:
+        sData.h[lastIndex] > sData.h[lastIndex - 1]
+          ? sData.h[lastIndex]
+          : sData.h[lastIndex - 1],
+      low:
+        sData.l[lastIndex] < sData.l[lastIndex - 1]
+          ? sData.l[lastIndex]
+          : sData.l[lastIndex - 1],
+    };
+
     const tradeObj = {
       name: item.symbol,
       symbol: item.symbol,
@@ -483,6 +545,13 @@ const checkForGoodTrade = async () => {
       time: item.trade?.time ? item.trade.time * 1000 : Date.now(),
       date: new Date().toLocaleDateString("en-in"),
     };
+    if (tradeObj.startPrice > prices.low && tradeObj.startPrice < prices.high)
+      tradeObj.status = "taken";
+    else {
+      tradeObj.status = "limit";
+      tradeObj.limitTime = tradeObj.time;
+    }
+
     if (!isAllowedToTakeThisTrade(tradeObj)) continue;
 
     const newTrade = new tradeSchema(tradeObj);
