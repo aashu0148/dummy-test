@@ -223,8 +223,8 @@ const completeTodaysTradesStatus = async (todayTakenTrades = []) => {
       }
 
       const prices = {
-        high: stockData.h[currIndex],
-        low: stockData.l[currIndex],
+        high: data.h[currIndex],
+        low: data.l[currIndex],
       };
 
       if (trade.startPrice > prices.low && trade.startPrice < prices.high) {
