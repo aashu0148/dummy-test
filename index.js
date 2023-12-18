@@ -193,6 +193,7 @@ const completeTodaysTradesStatus = async (todayTakenTrades = []) => {
     )
       return;
 
+    const symbol = trade.symbol || trade.name;
     const data = stockData.data[symbol] ? stockData.data[symbol]["5"] : {};
     if (!data?.c?.length) return;
 
@@ -236,7 +237,6 @@ const completeTodaysTradesStatus = async (todayTakenTrades = []) => {
     const currTradeHigh = trade.tradeHigh || 0;
     const currTradeLow = trade.tradeLow || 9999999;
     const isSellTrade = trade.type.toLowerCase() == "sell";
-    const symbol = trade.symbol || trade.name;
 
     const tradeTimeInSec = trade.time / 1000;
     const timeIndex = data.t.findIndex((t) => t >= tradeTimeInSec);
