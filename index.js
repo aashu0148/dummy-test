@@ -223,8 +223,8 @@ const completeTodaysTradesStatus = async (todayTakenTrades = []) => {
       if (trade.startPrice > prices.low && trade.startPrice < prices.high) {
         updateObject.status = "taken";
         updateObject.limitTime = trade.time;
-        updateObject.time = stockData.t[currIndex]
-          ? stockData.t[currIndex] * 1000
+        updateObject.time = data.t[currIndex]
+          ? data.t[currIndex] * 1000
           : Date.now();
 
         await tradeSchema.updateOne(
