@@ -203,6 +203,14 @@ const completeTodaysTradesStatus = async (todayTakenTrades = []) => {
         (t) => t >= (trade.limitTime || trade.time) / 1000
       );
       const updateObject = {};
+
+      console.log({
+        trade,
+        t: data.t,
+        currIndex,
+        startIndex,
+      });
+
       if (currIndex - startIndex > 10) {
         updateObject.status = "cancelled";
         await tradeSchema.updateOne(
