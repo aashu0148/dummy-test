@@ -549,12 +549,12 @@ const checkForGoodTrade = async () => {
       time: item.trade?.time ? item.trade.time * 1000 : Date.now(),
       date: new Date().toLocaleDateString("en-in"),
     };
-    if (tradeObj.startPrice > prices.low && tradeObj.startPrice < prices.high)
-      tradeObj.status = "taken";
-    else {
-      tradeObj.status = "limit";
-      tradeObj.limitTime = tradeObj.time;
-    }
+    // if (tradeObj.startPrice > prices.low && tradeObj.startPrice < prices.high)
+    //   tradeObj.status = "taken";
+    // else {
+    //   tradeObj.status = "limit";
+    //   tradeObj.limitTime = tradeObj.time;
+    // }
 
     if (!isAllowedToTakeThisTrade(tradeObj)) continue;
 
