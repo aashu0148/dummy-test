@@ -199,7 +199,9 @@ const completeTodaysTradesStatus = async (todayTakenTrades = []) => {
 
     let currIndex = data.c.length - 1;
     if (trade.status == "limit") {
-      const startIndex = data.t.findIndex((t) => t >= trade.limitTime / 1000);
+      const startIndex = data.t.findIndex(
+        (t) => t >= (trade.limitTime || trade.time) / 1000
+      );
       const updateObject = {};
       if (currIndex - startIndex > 10) {
         updateObject.status = "cancelled";
@@ -219,6 +221,7 @@ const completeTodaysTradesStatus = async (todayTakenTrades = []) => {
 
       if (trade.startPrice > prices.low && trade.startPrice < prices.high) {
         updateObject.status = "taken";
+        updateObject.limitTime = trade.time;
         updateObject.time = stockData.t[currIndex]
           ? stockData.t[currIndex] * 1000
           : Date.now();
@@ -521,7 +524,7 @@ const checkForGoodTrade = async () => {
     const item = trades[i];
 
     const sData = stockData.data[item.symbol]["5"];
-    const lastIndex = sData.c.length - 1;
+    const lastIndex = sData.h.length - 1;
     if (lastIndex < 0) {
       console.log("weirdly stock data not found for", item.symbol);
       continue;
