@@ -21,6 +21,7 @@ const schema = new mongoose.Schema(
       type: Number,
       required: true,
     },
+    priceData: Array,
     tradeHigh: Number,
     tradeLow: Number,
     time: Number,

@@ -65,7 +65,7 @@ app.get("/hi", (_req, res) => res.send("Hello there buddy!"));
 
 const getStockPastData = async (
   symbol,
-  from = Date.now() - 20 * 24 * 60 * 60 * 1000, // it is important to have 20-30 days data so that the algo can make good support and resistances
+  from = Date.now() - 12 * 24 * 60 * 60 * 1000, // it is important to have 10-20 days data so that the algo can make good support and resistances
   to,
   resolution = 5
 ) => {
@@ -238,23 +238,23 @@ const completeTodaysTradesStatus = async (todayTakenTrades = []) => {
       return;
     }
 
-    const currTradeHigh = trade.tradeHigh || 0;
-    const currTradeLow = trade.tradeLow || 9999999;
     const isSellTrade = trade.type.toLowerCase() == "sell";
 
     const tradeTimeInSec = trade.time / 1000;
     const timeIndex = data.t.findIndex((t) => t >= tradeTimeInSec);
     if (timeIndex < 0) return;
 
+    const tradePriceData = {
+      c: data.c.slice(timeIndex),
+      o: data.o.slice(timeIndex),
+      h: data.h.slice(timeIndex),
+      l: data.l.slice(timeIndex),
+      t: data.t.slice(timeIndex),
+      v: data.v.slice(timeIndex),
+    };
     const { statusNumber, tradeHigh, tradeLow } = checkTradeCompletion(
       trade.startPrice,
-      {
-        c: data.c.slice(timeIndex),
-        o: data.o.slice(timeIndex),
-        h: data.h.slice(timeIndex),
-        l: data.l.slice(timeIndex),
-        t: data.t.slice(timeIndex),
-      },
+      tradePriceData,
       trade.target,
       trade.sl,
       isSellTrade
@@ -262,24 +262,7 @@ const completeTodaysTradesStatus = async (todayTakenTrades = []) => {
 
     const status =
       statusNumber == 1 ? "profit" : statusNumber == -1 ? "loss" : "taken";
-    if (status == trade.status) {
-      if (tradeHigh !== currTradeHigh || tradeLow !== currTradeLow) {
-        await tradeSchema.updateOne(
-          { _id: trade._id },
-          {
-            $set: {
-              status,
-              tradeHigh,
-              tradeLow,
-            },
-          }
-        );
-      }
 
-      return;
-    }
-
-    // update the trade status
     await tradeSchema.updateOne(
       { _id: trade._id },
       {
@@ -287,10 +270,14 @@ const completeTodaysTradesStatus = async (todayTakenTrades = []) => {
           status,
           tradeHigh,
           tradeLow,
+          priceData: tradePriceData,
         },
       }
     );
-    console.log(`🔵 Trade status updated for ${symbol}, as: ${status}`);
+
+    if (status == trade.status) {
+      console.log(`🔵 Trade status updated for ${symbol}, as: ${status}`);
+    }
   });
 };
 
@@ -530,16 +517,6 @@ const checkForGoodTrade = async () => {
       console.log("weirdly stock data not found for", item.symbol);
       continue;
     }
-    const prices = {
-      high:
-        sData.h[lastIndex] > sData.h[lastIndex - 1]
-          ? sData.h[lastIndex]
-          : sData.h[lastIndex - 1],
-      low:
-        sData.l[lastIndex] < sData.l[lastIndex - 1]
-          ? sData.l[lastIndex]
-          : sData.l[lastIndex - 1],
-    };
 
     const tradeObj = {
       name: item.symbol,
@@ -549,12 +526,6 @@ const checkForGoodTrade = async () => {
       time: item.trade?.time ? item.trade.time * 1000 : Date.now(),
       date: new Date().toLocaleDateString("en-in"),
     };
-    // if (tradeObj.startPrice > prices.low && tradeObj.startPrice < prices.high)
-    //   tradeObj.status = "taken";
-    // else {
-    //   tradeObj.status = "limit";
-    //   tradeObj.limitTime = tradeObj.time;
-    // }
 
     if (!isAllowedToTakeThisTrade(tradeObj)) continue;
 
