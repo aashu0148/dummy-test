@@ -489,6 +489,7 @@ const checkForGoodTrade = async () => {
       symbol: s,
       trades: t,
       trade: t.length ? t[0] : {},
+      preset: presets.find((p) => p.symbol == s)?.preset || {},
       analytic: a[0] && typeof a[0] == "object" ? { ...a[0], symbol: s } : {},
     };
   });
@@ -534,6 +535,7 @@ const checkForGoodTrade = async () => {
       status: "taken",
       time: item.trade?.time ? item.trade.time * 1000 : Date.now(),
       date: new Date().toLocaleDateString("en-in"),
+      preset: item.preset || {},
     };
 
     if (!isAllowedToTakeThisTrade(tradeObj)) continue;
