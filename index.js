@@ -253,12 +253,12 @@ const completeTodaysTradesStatus = async (todayTakenTrades = []) => {
       v: data.v.slice(timeIndex),
     };
     const longTradePriceData = {
-      c: data.c.slice(timeIndex - 50),
-      o: data.o.slice(timeIndex - 50),
-      h: data.h.slice(timeIndex - 50),
-      l: data.l.slice(timeIndex - 50),
-      t: data.t.slice(timeIndex - 50),
-      v: data.v.slice(timeIndex - 50),
+      c: data.c.slice(timeIndex - 85),
+      o: data.o.slice(timeIndex - 85),
+      h: data.h.slice(timeIndex - 85),
+      l: data.l.slice(timeIndex - 85),
+      t: data.t.slice(timeIndex - 85),
+      v: data.v.slice(timeIndex - 85),
     };
     const { statusNumber, tradeHigh, tradeLow } = checkTradeCompletion(
       trade.startPrice,
@@ -279,7 +279,7 @@ const completeTodaysTradesStatus = async (todayTakenTrades = []) => {
           tradeHigh,
           tradeLow,
           priceData: longTradePriceData,
-          tradeStartIndex: 50,
+          tradeStartIndex: 85,
         },
       }
     );
