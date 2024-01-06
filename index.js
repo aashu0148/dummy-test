@@ -2,6 +2,7 @@ import express from "express";
 import cors from "cors";
 import mongoose from "mongoose";
 import { Server as socketServer } from "socket.io";
+import { takeTrades } from "@aashu0148/yota-algo";
 import http from "http";
 import nodemailer from "nodemailer";
 import axios from "axios";
@@ -16,7 +17,6 @@ import SocketEvents from "./app/socket/events.js";
 import presetRoutes from "./app/presets/presetRoutes.js";
 import stockRoutes from "./app/stocks/stocksRoutes.js";
 import userRoutes from "./app/user/userRoutes.js";
-import { takeTrades } from "./util/tradeUtil.js";
 
 const emailsToNotify = ["buildforss@gmail.com", "hariomparasher@gmail.com"];
 const gmailMail = process.env.GMAIL_MAIL;
